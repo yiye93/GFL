@@ -53,9 +53,9 @@ class JobManager(object):
         with lock:
             # server_host, job_id, train_strategy, train_model, train_model_class_name, fed_strategy, iterations, distillation_alpha
             if fed_strategy == FederateStrategy.FED_DISTILLATION and distillation_alpha is None:
-                raise PFLException("generate_job() missing 1 positoonal argument: 'distillation_alpha'")
+                raise PFLException("generate_job() missing 1 positional argument: 'distillation_alpha'")
             if epoch == 0:
-                raise PFLException("generate_job() missing 1 positoonal argument: 'epoch'")
+                raise PFLException("generate_job() missing 1 positional argument: 'epoch'")
 
             job = Job(None, JobUtils.generate_job_id(), inspect.getsourcefile(model),
                       model.__name__, fed_strategy, epoch,  distillation_alpha=distillation_alpha, l2_dist=l2_dist)

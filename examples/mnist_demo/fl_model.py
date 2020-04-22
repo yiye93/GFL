@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 import torch.nn.functional as F
 import pfl.core.strategy as strategy
@@ -27,7 +28,6 @@ class Net(nn.Module):
 if __name__ == "__main__":
 
     model = Net()
-
     job_manager = JobManager()
     job = job_manager.generate_job(work_mode=strategy.WorkModeStrategy.WORKMODE_STANDALONE,
                                    fed_strategy=strategy.FederateStrategy.FED_AVG, epoch=3, model=Net)
