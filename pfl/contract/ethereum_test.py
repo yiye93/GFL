@@ -15,9 +15,9 @@ if __name__ == "__main__":
     web3.geth.personal.unlockAccount(web3.eth.coinbase, "abc")
 
     ##部署智能合约
-    with open("/Users/huyifan/Documents/PFL/pfl/contract/PFLStorage.bin", "r") as bytecode_f:
+    with open("/pfl/contract/pfl_storage_contract_src/PFLStorage.bin", "r") as bytecode_f:
         bytecode = json.loads(bytecode_f.read())['object']
-    with open("/Users/huyifan/Documents/PFL/pfl/contract/PFLStorage.abi", "r") as abi_f:
+    with open("/pfl/contract/pfl_storage_contract_src/PFLStorage.abi", "r") as abi_f:
         abi = json.loads(abi_f.read())
     my_contract = web3.eth.contract(abi=abi, bytecode=bytecode)
     tx_hash = my_contract.constructor().transact()

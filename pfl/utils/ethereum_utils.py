@@ -14,10 +14,12 @@
 
 from web3 import Web3
 from pfl.exceptions.fl_expection import PFLException
-
-
+from pfl.contract.pfl_storage_contract import PFLStorage
+from pfl.contract.pfl_controller_contract import PFLController
 
 class PFLEthereumUtils:
+
+    pfl_controller_contract = None
 
     @staticmethod
     def get_connection_with_ethereum(url=None):
@@ -31,3 +33,21 @@ class PFLEthereumUtils:
             raise PFLException("Connect to ethereum fail!!!")
         else:
             return web3
+
+    @staticmethod
+    def init_ethereum_contracts(web3=None):
+        if web3 is None:
+            raise PFLException("init_ethereum_contracts() missing 1 positional argument")
+        PFLEthereumUtils.pfl_controller_contract = PFLController(web3)
+
+
+
+    @staticmethod
+    def get_pfl_controller_contract_instance():
+        if PFLEthereumUtils.pfl_controller_contract is None:
+            raise PFLException("Ethereum contracts is not initialization, please inoke init_ethereum_contracts(web3) first!")
+        return PFLEthereumUtils.pfl_controller_contract
+
+    @staticmethod
+    def deploy_and_get_pfl_storage_contract_instance():
+        pass
