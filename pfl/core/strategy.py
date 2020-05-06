@@ -21,6 +21,7 @@ from pfl.exceptions.fl_expection import PFLException
 class WorkModeStrategy(Enum):
     WORKMODE_STANDALONE = "standalone"
     WORKMODE_CLUSTER = "cluster"
+    WORKMODE_BLOCKCHAIN = "blockchain"
 
 
 class FederateStrategy(Enum):

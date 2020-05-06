@@ -8,28 +8,28 @@ import time
 
 if __name__ == "__main__":
 
-    web3 = PFLEthereumUtils.get_connection_with_ethereum(url="http://127.0.0.1:8545")
+    web3 = PFLEthereumUtils.get_connection_with_ethereum(url="http://10.5.18.241:8545")
     # print(web3.eth.accounts)
 
     web3.eth.defaultAccount = web3.eth.coinbase
     web3.geth.personal.unlockAccount(web3.eth.coinbase, "abc")
 
     ##部署智能合约
-    with open("/pfl/contract/pfl_storage_contract_src/PFLStorage.bin", "r") as bytecode_f:
+    with open("/Users/huyifan/Documents/PFL/pfl/contract/test_contract_src/test.bin", "r") as bytecode_f:
         bytecode = json.loads(bytecode_f.read())['object']
-    with open("/pfl/contract/pfl_storage_contract_src/PFLStorage.abi", "r") as abi_f:
+    with open("/Users/huyifan/Documents/PFL/pfl/contract/test_contract_src/test.abi", "r") as abi_f:
         abi = json.loads(abi_f.read())
-    my_contract = web3.eth.contract(abi=abi, bytecode=bytecode)
-    tx_hash = my_contract.constructor().transact()
-    tx_receipt = web3.eth.waitForTransactionReceipt(tx_hash)
-    contract_address = tx_receipt.contractAddress
-    print("new contract address: ", contract_address)
+    # my_contract = web3.eth.contract(abi=abi, bytecode=bytecode)
+    # tx_hash = my_contract.constructor().transact()
+    # tx_receipt = web3.eth.waitForTransactionReceipt(tx_hash)
+    # contract_address = tx_receipt.contractAddress
+    # print("new contract address: ", contract_address)
 
-
+    contract_address = "0x504094c2eea131c1ccea449dfa6b8618a8d5b78b"
 
     # 调用部署好的智能合约
     # contract_address = '0x4031db3d1f6a25c7ef06a48735a6b547c34ccb2f'
-    # contract_address = web3.toChecksumAddress(contract_address)
+    contract_address = web3.toChecksumAddress(contract_address)
     # print(contract_address)
     # #private_key = "05EAD4C38EF65C1F721C662435B835BE5DF3E2E822D0274200B96A055B7C9C4E"
     # #
@@ -92,19 +92,19 @@ if __name__ == "__main__":
     #
     print(result2)
 
-    name = contract.functions.getName().call()
-    print("name: ", name)
-
-    txHash = contract.functions.setName("huyifan").transact({'from':web3.eth.coinbase, 'gas':0x2fefd8})
-    receipt = web3.eth.waitForTransactionReceipt(txHash)
-    print("setName receipt: ", receipt)
-
-    txHash2 = contract.functions.setName("Gueyue").transact({'from':web3.eth.coinbase, 'gas':0x2fefd8})
-    receipt2 = web3.eth.waitForTransactionReceipt(txHash2)
-    print("setName receipt: ", receipt2)
-
-    name = contract.functions.getName().call()
-    print("name: ", name)
-
-    names = contract.functions.getNames().call()
-    print("names: ", names)
+    # name = contract.functions.getName().call()
+    # print("name: ", name)
+    #
+    # txHash = contract.functions.setName("huyifan").transact({'from':web3.eth.coinbase, 'gas':0x2fefd8})
+    # receipt = web3.eth.waitForTransactionReceipt(txHash)
+    # print("setName receipt: ", receipt)
+    #
+    # txHash2 = contract.functions.setName("Gueyue").transact({'from':web3.eth.coinbase, 'gas':0x2fefd8})
+    # receipt2 = web3.eth.waitForTransactionReceipt(txHash2)
+    # print("setName receipt: ", receipt2)
+    #
+    # name = contract.functions.getName().call()
+    # print("name: ", name)
+    #
+    # names = contract.functions.getNames().call()
+    # print("names: ", names)

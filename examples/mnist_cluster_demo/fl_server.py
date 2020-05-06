@@ -8,4 +8,4 @@ API_VERSION = '/api/version'
 
 if __name__ == "__main__":
 
-    FLClusterServer(FEDERATE_STRATEGY, IP, PORT, API_VERSION).start()
+    FLClusterServer(IP, PORT, API_VERSION, FEDERATE_STRATEGY).start()

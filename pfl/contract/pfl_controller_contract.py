@@ -15,32 +15,45 @@
 
 import os
 import json
+import logging
 from pfl.contract.contract_config import *
 from pfl.exceptions.fl_expection import PFLException
+from pfl.utils.utils import LoggerFactory
 
 
 class PFLController(object):
 
-    def __init__(self, web3):
+    def __init__(self, web3=None, account=None, password=None, contract_address=None):
 
-        if web3 is None:
-            raise PFLException("__init__() missing 1 positional argument")
+        if web3 is None or account is None or password is None:
+            raise PFLException("__init__() missing positional arguments")
 
         self.web3 = web3
+        self.password = password
+        self.web3.eth.defaultAccount = self.web3.toChecksumAddress(account)
+        self.web3.geth.personal.unlockAccount(web3.eth.coinbase, self.password)
+        self.logger = LoggerFactory.getLogger("PFLController", logging.INFO)
+        if not contract_address:
+            with open(PFL_CONTROLLER_CONTRACT_ABI, "r") as abi_f:
+                abi = json.loads(abi_f.read())
+            with open(PFL_CONTROLLER_CONTRACT_BIN, "r") as bin_f:
+                bytecode = json.loads(bin_f.read())['object']
+            pre_contract = self.web3.eth.contract(abi=abi, bytecode=bytecode)
+            tx_hash = pre_contract.constructor().transact()
+            tx_receipt = self.web3.eth.waitForTransactionReceipt(tx_hash)
+            if tx_receipt is None:
+                raise PFLException("Deploy PFLController Contract fail!")
 
-        with open(PFL_CONTROLLER_CONTRACT_ABI, "r") as abi_f:
-            abi = json.loads(abi_f.read())
-        with open(PFL_CONTROLLER_CONTRACT_BIN, "r") as bin_f:
-            bytecode = json.loads(bin_f.read())['object']
-        pre_contract = self.web3.eth.contract(abi=abi, bytecode=bytecode)
-        tx_hash = pre_contract.constructor().transact()
-        tx_receipt = self.web3.eth.waitForTransactionReceipt(tx_hash)
-        if tx_receipt is None:
-            raise PFLException("Deploy PFLController Contract fail!")
+            self.logger.info("PFLController contract has been deployed, contract address: {}".format(tx_receipt.contractAddress))
 
-        self.pfl_controller_contract_address = tx_receipt.contractAddress
+            self.pfl_controller_contract_address = self.web3.toChecksumAddress(tx_receipt.contractAddress)
 
-        self.pfl_controller_contract = self.web3.eth.contract(address=self.pfl_controller_contract_address, abi=abi)
+            self.pfl_controller_contract = self.web3.eth.contract(address=self.pfl_controller_contract_address, abi=abi)
+        else:
+            with open(PFL_CONTROLLER_CONTRACT_ABI, "r") as abi_f:
+                abi = json.loads(abi_f.read())
+            self.pfl_controller_contract_address = self.web3.toChecksumAddress(contract_address)
+            self.pfl_controller_contract = self.web3.eth.contract(address=self.web3.toChecksumAddress(self.pfl_controller_contract_address), abi=abi)
 
     def addMap(self, job_id, contract_address):
         tx_hash = self.pfl_controller_contract.functions.addMap(str(job_id), contract_address).transact({'from': self.web3.eth.coinbase, 'gas': GAS_PRICE})

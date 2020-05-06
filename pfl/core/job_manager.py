@@ -40,7 +40,7 @@ class JobManager(object):
         self.logger = LoggerFactory.getLogger("JobManager", logging.INFO)
 
     def generate_job(self, work_mode=WorkModeStrategy.WORKMODE_STANDALONE,
-                     fed_strategy=FederateStrategy.FED_AVG, epoch=0, model=None, distillation_alpha=None, l2_dist=False):
+                     fed_strategy=FederateStrategy.FED_AVG, epoch=0, model=None, distillation_alpha=None, l2_dist=False, server_host=None):
         """
         Generate job with user-defined strategy
         :param work_mode:
@@ -57,13 +57,21 @@ class JobManager(object):
             if epoch == 0:
                 raise PFLException("generate_job() missing 1 positional argument: 'epoch'")
 
+            if not work_mode:
+                raise PFLException("generate_job() missing 1 positional argument: 'work_mode'")
+
             job = Job(None, JobUtils.generate_job_id(), inspect.getsourcefile(model),
                       model.__name__, fed_strategy, epoch,  distillation_alpha=distillation_alpha, l2_dist=l2_dist)
 
             if work_mode == WorkModeStrategy.WORKMODE_STANDALONE:
                 job.set_server_host("localhost:8080")
+            elif work_mode == WorkModeStrategy.WORKMODE_CLUSTER:
+                if server_host == None:
+                    raise PFLException("generate_job() missing 1 positional argument: 'server_host'")
+                job.set_server_host(server_host)
             else:
-                job.set_server_host("")
+                #init smart_contract
+                pass
 
             return job
 

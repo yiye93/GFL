@@ -124,7 +124,8 @@ class JobEncoder(json.JSONEncoder):
                 'server_host': o.get_server_host(),
                 'aggregate_strategy': o.get_aggregate_strategy().value,
                 'distillation_alpha': o.get_distillation_alpha(),
-                'l2_dist': o.get_l2_dist()
+                'l2_dist': o.get_l2_dist(),
+                'pfl_storage_contract_address': o.get_pfl_storage_contract_address()
             }
         return json.JSONEncoder.default(self, o)
 
@@ -132,10 +133,10 @@ class JobEncoder(json.JSONEncoder):
 class JobDecoder(json.JSONDecoder):
     def decode(self, s, _w=WHITESPACE.match):
         dict = super().decode(s)
-        return Job(dict['server_host'], dict['job_id'], dict['train_model'],
+        job = Job(dict['server_host'], dict['job_id'], dict['train_model'],
                    dict['train_model_class_name'],
-                   dict['aggregate_strategy'], dict['epoch'], dict['distillation_alpha'], dict['l2_dist'])
-
+                   dict['aggregate_strategy'], dict['epoch'], dict['distillation_alpha'], dict['l2_dist'], dict['pfl_storage_contract_address'])
+        return job
 #
 # class TrainStrategyEncoder(json.JSONEncoder):
 #     def default(self, o):

@@ -14,8 +14,11 @@
 
 import os
 import importlib
-from pfl.utils.utils import JobUtils
+from pfl.utils.utils import JobUtils, CyclicTimer
+from pfl.utils.ethereum_utils import PFLEthereumUtils
 from pfl.entity.model import Model
+from pfl.exceptions.fl_expection import PFLException
+from pfl.core.strategy import WorkModeStrategy, FederateStrategy
 
 JOB_PATH = os.path.join(os.path.abspath("."), "res", "jobs_client")
 BASE_MODEL_PATH = os.path.join(os.path.abspath("."), "res", "models")
@@ -69,4 +72,31 @@ class FLClient(object):
 
 
 
+class FLClientBlockchain(FLClient):
+    pass
 
+
+
+class FLModelBlockchain(FLClient):
+
+    def __init__(self, ethereum_url=None, model_client_blockchain_address=None, model_client_blockchain_address_password=None, federate_strategy=None):
+        super(FLModelBlockchain, self).__init__()
+        if ethereum_url is None or model_client_blockchain_address is None or model_client_blockchain_address_password is None:
+            raise PFLException("parameter error")
+        self.federate_strategy = federate_strategy
+        self.server_blockchain_address = model_client_blockchain_address
+        self.server_blockchain_address_password = model_client_blockchain_address_password
+        self.work_mode = WorkModeStrategy.WORKMODE_BLOCKCHAIN
+        self.ethereum_url = ethereum_url
+        self.web3 = PFLEthereumUtils.get_connection_with_ethereum(self.ethereum_url)
+        self.pfl_controller_contract = PFLEthereumUtils.init_pfl_controller_contracts(web3=self.web3,
+                                                                                      account=self.server_blockchain_address,
+                                                                                      account_password=self.server_blockchain_address_password)
+        self.cyclic_timer = CyclicTimer(60, PFLEthereumUtils.block_support_function)
+
+    def start(self):
+        self.logger.info("Work Mode: {}".format(self.work_mode))
+        self.logger.info("Successfully connected to Ethereum")
+        if self.federate_strategy == FederateStrategy.FED_AVG:
+            raise PFLException("Blockchain mode only allowed in FED_DISTILLATION federate strategy")
+        self.cyclic_timer.start()

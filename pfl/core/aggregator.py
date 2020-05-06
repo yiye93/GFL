@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pfl.core.strategy import WorkModeStrategy
 from pfl.core.job_manager import JobManager
 from pfl.utils.utils import LoggerFactory
+from pfl.utils.ipfs_utils import IpfsUtils
 from pfl.entity.runtime_config import WAITING_BROADCAST_AGGREGATED_JOB_ID_LIST, CONNECTED_TRAINER_LIST
 
 LOCAL_AGGREGATE_FILE = os.path.join("tmp_aggregate_pars", "avg_pars")
@@ -182,12 +183,49 @@ class FedAvgAggregator(Aggregator):
         self.logger.info("job {} save final aggregated parameters successfully!".format(job_id))
 
 
+
+class FedAvgBlockchainAggregator(FedAvgAggregator):
+
+    def __init__(self, work_mode, job_path, base_model_path, web3):
+        super(FedAvgBlockchainAggregator, self).__init__(work_mode, job_path, base_model_path)
+        self.fed_step = {}
+        self.logger = LoggerFactory.getLogger("FedAvgBlockchainAggregator", logging.INFO)
+        self.web3 = web3
+
+
+
+
+    def _broadcast(self, job_id_list, connected_client_list, base_model_path):
+        """
+
+        :param job_id_list:
+        :param connected_client_list:
+        :param base_model_path:
+        :return:
+        """
+        aggregated_files = self._prepare_upload_aggregate_file(job_id_list, base_model_path)
+        # self.logger.info("connected client list: {}".format(connected_client_list))
+        # for client in connected_client_list:
+        #     client_url = "http://{}".format(client)
+        #     response = requests.post("/".join([client_url, "aggregatepars"]), data=None, files=aggregated_files)
+        #     # print(response)
+        # upload to ethereum
+
+
 class DistillationAggregator(Aggregator):
     """
     Model distillation does not require a centralized server that we don't need to provide a Distillation aggregator
     """
     def __init__(self, work_mode, job_path, base_model_path):
         super(DistillationAggregator, self).__init__(work_mode, job_path, base_model_path)
+        self.fed_step = {}
+
+    def aggregate(self):
+        pass
+
+class DistillationBlockchainAggregator(DistillationAggregator):
+    def __init__(self, work_mode, job_path, base_model_path):
+        super(DistillationBlockchainAggregator, self).__init__(work_mode, job_path, base_model_path)
         self.fed_step = {}
 
     def aggregate(self):

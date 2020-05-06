@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
+import os, sys
 
 GAS_PRICE = 0x2fefd8
 
-PFL_CONTROLLER_CONTRACT_ABI = os.path.join(os.path.abspath("."), "pfl_controller_contract_src/PFLController.abi")
-PFL_CONTROLLER_CONTRACT_BIN = os.path.join(os.path.abspath("."), "pfl_controller_contract_src/PFLController.bin")
-PFL_CONTROLLER_CONTRACT_SOL = os.path.join(os.path.abspath("."), "pfl_controller_contract_src/PFLController.sol")
+PFL_CONTROLLER_CONTRACT_ABI = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfl_controller_contract_src/PFLController.abi")
+PFL_CONTROLLER_CONTRACT_BIN = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfl_controller_contract_src/PFLController.bin")
+PFL_CONTROLLER_CONTRACT_SOL = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfl_controller_contract_src/PFLController.sol")
 
-PFL_STORAGE_CONTRACT_ABI = os.path.join(os.path.abspath("."), "pfl_storage_contract_src/PFLStorage.abi")
-PFL_STORAGE_CONTRACT_BIN = os.path.join(os.path.abspath("."), "pfl_storage_contract_src/PFLStorage.bin")
-PFL_STORAGE_CONTRACT_SOL = os.path.join(os.path.abspath("."), "pfl_storage_contract_src/PFLStorage.sol")
+PFL_STORAGE_CONTRACT_ABI = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfl_storage_contract_src/PFLStorage.abi")
+PFL_STORAGE_CONTRACT_BIN = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfl_storage_contract_src/PFLStorage.bin")
+PFL_STORAGE_CONTRACT_SOL = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfl_storage_contract_src/PFLStorage.sol")
 
