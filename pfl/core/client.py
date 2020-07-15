@@ -16,7 +16,7 @@ import os
 import importlib
 from pfl.utils.utils import JobUtils, CyclicTimer
 from pfl.utils.ethereum_utils import PFLEthereumUtils
-from pfl.entity.model import Model
+from pfl.entity.gfl_model import Model
 from pfl.exceptions.fl_expection import PFLException
 from pfl.core.strategy import WorkModeStrategy, FederateStrategy
 
