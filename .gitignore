@@ -1,0 +1,10 @@
+# py env
+.venv/
+venv/
+
+# pycharm
+.idea
+
+# project
+res/
+dataset/
