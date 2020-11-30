@@ -7,7 +7,6 @@ key_file = os.path.join(gfl_dir, "key.json")
 
 data_dir = "res"
 job_dir = os.path.join(data_dir, "job")
-model_dir = os.path.join(data_dir, "model")
 client_dir = os.path.join(data_dir, "client")
 server_dir = os.path.join(data_dir, "server")
 

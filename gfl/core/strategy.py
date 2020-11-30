@@ -18,6 +18,11 @@ from enum import Enum
 from gfl.exceptions.fl_expection import GFLException
 
 
+class Strategy(Enum):
+    USER_DEFINED = "UserDefined"
+    NONE = "None"
+
+
 class WorkModeStrategy(Enum):
     WORKMODE_STANDALONE = "standalone"
     WORKMODE_CLUSTER = "cluster"
@@ -26,6 +31,12 @@ class WorkModeStrategy(Enum):
 class FederateStrategy(Enum):
     FED_AVG = "fed_avg"
     FED_DISTILLATION = "fed_distillation"
+
+
+class AggregateStrategy(Enum):
+    FED_AVG = "fed_avg"
+    FED_DISTILLATION = "fed_distillation"
+
 
 class LossStrategy(Enum):
     L1_LOSS = "L1loss"
@@ -37,6 +48,8 @@ class LossStrategy(Enum):
     BCE_LOSS = "BCELoss"
     BCEWITHLOGITS_Loss = "BCEWithLogitsLoss"
     MARGINRANKING_Loss = "MarginRankingloss"
+    USER_DEFINED = "UserDefined"
+    NONE = "None"
 
 class SchedulerStrategy(Enum):
     CYCLICLR = "CyclicLR"
@@ -45,10 +58,14 @@ class SchedulerStrategy(Enum):
     LAMBDALR = "LambdaLR"
     MULTISTEPLR = "ReduceLROnPlateau"
     STEPLR = "StepLR"
+    USER_DEFINED = "UserDefined"
+    NONE = "None"
 
 class OptimizerStrategy(Enum):
     OPTIM_SGD = "SGD"
     OPTIM_ADAM = "Adam"
+    USER_DEFINED = "UserDefined"
+    NONE = "None"
 
 
 

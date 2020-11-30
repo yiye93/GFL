@@ -1,14 +1,10 @@
 import gfl_test
 
-import time
+import gfl_test.inst as inst
+from gfl.core.job_mgr import JobMgr
 
-print(time.time())
-
-from gfl.utils.job_utils import JobUtils
-
-print(time.time())
+import sys
 
 if __name__ == "__main__":
-    for i in range(10):
-        print(JobUtils.generate_job_id())
-        time.sleep(0.0000001)
+    for p in sys.path:
+        print(p)

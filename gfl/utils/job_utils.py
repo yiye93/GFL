@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from gfl.conf import client_id
+from gfl.conf import node_id
 
 
 class JobUtils(object):
@@ -11,7 +11,7 @@ class JobUtils(object):
 
     @classmethod
     def generate_job_id(cls):
-        namespace = uuid.UUID(client_id[:32])
+        namespace = uuid.UUID(node_id[:32])
         nano_time = int(int(1e9) * time.time())
-        name = client_id[32:] + str(nano_time / 100)
-        return uuid.uuid3(namespace, name)
+        name = node_id[32:] + str(nano_time / 100)
+        return uuid.uuid3(namespace, name).hex

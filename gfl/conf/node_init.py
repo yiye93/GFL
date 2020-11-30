@@ -29,4 +29,4 @@ def read_node_id():
 if not os.path.exists(key_file):
     init_node_id()
 
-client_id, priv_key = read_node_id()
+node_id, priv_key = read_node_id()
