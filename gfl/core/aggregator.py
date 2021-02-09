@@ -67,10 +67,10 @@ class Aggregator(object):
                             os.path.join(d_model_par_path, "tmp_D_parameters_{}".format(last_g_model_par_file_num - 1)))
                         d_model_pars.append(d_model_par)
                     else:
-                        return None, 0
+                        return None, None, 0
                 else:
                     # wait for other clients finish training
-                    return None, 0
+                    return None, None, 0
 
         return g_model_pars, d_model_pars, last_g_model_par_file_num
 
