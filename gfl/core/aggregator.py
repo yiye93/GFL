@@ -57,7 +57,7 @@ class Aggregator(object):
                 g_model_par_path = os.path.join(job_model_pars_path, f, "tmp_G_models")
                 # print("one_model_par_path: ", one_model_par_path)
                 d_model_par_path = os.path.join(job_model_pars_path, f, "tmp_D_models")
-                g_model_par_files, d_model_par_files = os.listdir(g_model_par_path), os.listdir()
+                g_model_par_files, d_model_par_files = os.listdir(g_model_par_path), os.listdir(d_model_par_path)
                 if len(g_model_par_files) != 0 and len(d_model_par_files) != 0:
                     last_g_model_par_file_num, last_d_model_par_file_num = len(g_model_par_files), len(d_model_par_files)
                     if last_g_model_par_file_num > fed_step and last_d_model_par_file_num > fed_step:
