@@ -22,7 +22,7 @@ from gfl.exceptions.fl_expection import GFLException
 from gfl.utils.utils import JobUtils, LoggerFactory, ModelUtils
 from gfl.core.strategy import WorkModeStrategy, FederateStrategy
 from gfl.core.trainer import TrainStandloneNormalStrategy, TrainMPCNormalStrategy, \
-    TrainStandloneDistillationStrategy, TrainMPCDistillationStrategy
+    TrainStandloneDistillationStrategy, TrainMPCDistillationStrategy, TrainStandloneGANFedAvgStrategy, TrainStandloneGANDistillationStrategy
 
 JOB_PATH = os.path.join(os.path.abspath("."), "res", "jobs_client")
 
@@ -32,7 +32,7 @@ class TrainerController(object):
     TrainerController is responsible for choosing a apprpriate train strategy for corresponding job
     """
 
-    def __init__(self, work_mode=WorkModeStrategy.WORKMODE_STANDALONE, models=None, data=None, test_data=None, client_id=0,
+    def __init__(self, work_mode=WorkModeStrategy.WORKMODE_STANDALONE, g_model=None, d_model=None, data=None, test_data=None, client_id=0,
                  client_ip="",
                  client_port=8081, server_url="", curve=False, local_epoch=3, concurrent_num=5, device=None):
         self.work_mode = work_mode
@@ -43,7 +43,8 @@ class TrainerController(object):
         self.concurrent_num = concurrent_num
         self.trainer_executor_pool = ThreadPoolExecutor(self.concurrent_num)
         self.job_path = JOB_PATH
-        self.models = models
+        self.g_model = g_model
+        self.d_model = d_model
         self.fed_step = {}
         self.job_train_strategy = {}
         self.client_ip = client_ip
@@ -78,20 +79,20 @@ class TrainerController(object):
         for job in job_list:
             if self.job_train_strategy.get(job.get_job_id()) is None:
                 # print(job.get_aggregate_strategy())
-                gfl_model = ModelUtils.get_model_by_job_id(self.models, job.get_job_id())
+                # gfl_model = ModelUtils.get_model_by_job_id(self.models, job.get_job_id())
                 if job.get_aggregate_strategy() == FederateStrategy.FED_AVG.value:
-                    self.job_train_strategy[job.get_job_id()] = TrainStandloneNormalStrategy(job, self.data, self.test_data,
+                    self.job_train_strategy[job.get_job_id()] = TrainStandloneGANFedAvgStrategy(job, self.data, self.test_data,
                                                                                              self.fed_step,
                                                                                              self.client_id,
                                                                                              self.local_epoch,
-                                                                                             gfl_model,
+                                                                                             self.g_model, self.d_model,
                                                                                              self.curve, self.device)
                 else:
-                    self.job_train_strategy[job.get_job_id()] = TrainStandloneDistillationStrategy(job, self.data, self.test_data,
+                    self.job_train_strategy[job.get_job_id()] = TrainStandloneGANDistillationStrategy(job, self.data, self.test_data,
                                                                                                    self.fed_step,
                                                                                                    self.client_id,
                                                                                                    self.local_epoch,
-                                                                                                   gfl_model,
+                                                                                                   self.g_model, self.d_model,
                                                                                                    self.curve, self.device)
                 self.run(self.job_train_strategy.get(job.get_job_id()))
 

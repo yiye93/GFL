@@ -248,12 +248,62 @@ def resnet56(class_num, pretrained=False, path=None, **kwargs):
         model.load_state_dict(new_state_dict)
     return model
 
+### GAN  Model
+
+class GNet(nn.Module):
+    def __init__(self, d=32):
+        super(GNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.ConvTranspose2d(100, d * 8, 4, 1, 0),
+            nn.BatchNorm2d(d * 8),
+            nn.ReLU(True),
+
+            nn.ConvTranspose2d(d * 8, d * 4, 4, 2, 1),
+            nn.BatchNorm2d(d * 4),
+            nn.ReLU(True),
+
+            nn.ConvTranspose2d(d * 4, d * 2, 4, 2, 1),
+            nn.BatchNorm2d(d * 2),
+            nn.ReLU(True),
+
+            nn.ConvTranspose2d(d * 2, 1, 4, 2, 1),
+            nn.Tanh()
+        )
+
+    def forward(self, input):
+        return self.net(input)
+
+
+class DNet(nn.Module):
+    def __init__(self, d=32):
+        super(DNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(1, d, 4, 2, 1),
+            nn.InstanceNorm2d(d),
+            nn.LeakyReLU(0.2),
+
+            nn.Conv2d(d, d * 2, 4, 2, 1),
+            nn.InstanceNorm2d(d * 2),
+            nn.LeakyReLU(0.2),
+
+            nn.Conv2d(d * 2, d * 4, 4, 2, 1),
+            nn.InstanceNorm2d(d * 4),
+            nn.LeakyReLU(0.2),
+
+            nn.Conv2d(d * 4, 1, 4, 1, 0),
+        )
+
+
+    def forward(self, input):
+        output = self.net(input)
+        return output.squeeze()
 
 if __name__ == "__main__":
 
-    model = CNN()
+    g_model = GNet()
+    d_model = DNet()
 
     job_manager = JobManager()
     job = job_manager.generate_job(work_mode=strategy.WorkModeStrategy.WORKMODE_STANDALONE,
-                                   fed_strategy=strategy.FederateStrategy.FED_AVG, epoch=200, model=CNN)
-    job_manager.submit_job(job, model)
+                                   fed_strategy=strategy.FederateStrategy.FED_AVG, epoch=200, g_model=GNet, d_model=DNet)
+    job_manager.submit_job(job, g_model, d_model)

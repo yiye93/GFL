@@ -22,6 +22,8 @@ import logging
 import requests
 import importlib
 import torch.nn.functional as F
+import torch.autograd as autograd
+from torch.autograd import Variable
 import matplotlib.pyplot as plt
 import numpy as np
 from inspect import isfunction
@@ -33,6 +35,8 @@ from gfl.utils.utils import LoggerFactory
 JOB_PATH = os.path.join(os.path.abspath("."), "res", "jobs_client")
 LOCAL_MODEL_BASE_PATH = os.path.join(os.path.abspath("."), "res", "models")
 AGGREGATE_PATH = "tmp_aggregate_pars"
+AGGREGATE_G_PATH = "tmp_aggregate_g_pars"
+AGGREGATE_D_PATH = "tmp_aggregate_d_pars"
 THRESHOLD = 0.5
 
 
@@ -166,14 +170,8 @@ class TrainNormalStrategy(TrainStrategy):
                 "test_loss: {}, test_accuracy:{}".format(loss.item(), float(acc) / float(len(test_dataloader.dataset))))
         model = model.to("cpu")
 
-    def _train(self, train_model, job_models_path, fed_step, local_epoch):
-        """
-        Traditional training method
-        :param train_model:
-        :param job_models_path:
-        :param fed_step:
-        :return:
-        """
+    def n_train(self, train_model, job_models_path, fed_step, local_epoch):
+
         # TODO: transfer training code to c++ and invoked by python using pybind11
 
         step = 0
@@ -548,6 +546,204 @@ class TrainStandloneNormalStrategy(TrainNormalStrategy):
                 #                                                          self.acc))
 
 
+class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
+    """
+    TrainStandloneNormalStrategy is responsible for controlling the process of traditional training in standalone mode
+    """
+
+    def __init__(self, job, data, test_data, fed_step, client_id, local_epoch, g_model, d_model, curve, device):
+        super(TrainStandloneGANFedAvgStrategy, self).__init__(job, data, test_data,  fed_step, client_id, local_epoch, None, curve, device)
+        self.g_model = g_model
+        self.d_model = d_model
+        self.logger = LoggerFactory.getLogger("TrainStandloneGANFedAvgStrategy", client_id, logging.INFO)
+
+    def _load_job_gan_model(self, job_id, flag, job_model_class_name):
+        """
+        Load model object according to job_id and model's class name
+        :param job_id:
+        :param job_model_class_name:
+        :return:
+        """
+        if flag == "G":
+            module = importlib.import_module("res.models.models_{}.init_g_model_{}".format(job_id, job_id),
+                                            "init_g_model_{}".format(job_id))
+        else:
+            module = importlib.import_module("res.models.models_{}.init_d_model_{}".format(job_id, job_id),
+                                             "init_d_model_{}".format(job_id))
+        model_class = getattr(module, job_model_class_name)
+        return model_class()
+
+    def _find_latest_gan_aggregate_model_pars(self, aggregate_g_path, aggregate_d_path, job_id):
+
+        # job_model_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id), "{}".format(AGGREGATE_PATH))
+        if not os.path.exists(aggregate_g_path) and not os.path.exists(aggregate_d_path):
+            os.makedirs(aggregate_g_path)
+            os.makedirs(aggregate_d_path)
+            init_g_model_pars_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
+                                                "init_g_model_pars_{}".format(job_id))
+            init_d_model_pars_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
+                                                  "init_d_model_pars_{}".format(job_id))
+            first_g_aggregate_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id), "tmp_aggregate_g_pars",
+                                                "avg_pars_{}".format(0))
+            first_d_aggregate_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
+                                                  "tmp_aggregate_d_pars",
+                                                  "avg_pars_{}".format(0))
+
+            if os.path.exists(init_g_model_pars_path) and os.path.exists(init_d_model_pars_path):
+                shutil.move(init_g_model_pars_path, first_g_aggregate_path)
+                shutil.move(init_d_model_pars_path, first_d_aggregate_path)
+        g_file_list, d_file_list = os.listdir(aggregate_g_path), os.listdir(aggregate_d_path)
+        # file_list = sorted(file_list, key=lambda x: os.path.getmtime(os.path.join(job_model_path, x)))
+        aggregate_g_file, aggregate_d_file = "", ""
+        for file in g_file_list:
+            if file.split("_")[-1] == str(len(g_file_list)-1):
+                aggregate_g_file = file
+                break
+        for file in d_file_list:
+            if file.split("_")[-1] == str(len(d_file_list)-1):
+                aggregate_d_file = file
+                break
+
+        if len(g_file_list) != 0 and len(d_file_list) and aggregate_g_file != "" and aggregate_d_file != "":
+            return os.path.join(aggregate_g_path, aggregate_g_file), os.path.join(aggregate_d_path, aggregate_d_file),  len(g_file_list), len(d_file_list)
+        return None, None, 0, 0
+
+    def _get_gan_optimizer(self, model, train_model):
+        if train_model.get_train_strategy().get_optimizer() is not None:
+            optimizer = self._generate_new_optimizer(model, train_model.get_train_strategy().get_optimizer())
+        else:
+            optimizer = self._generate_new_scheduler(model, train_model.get_train_strategy().get_scheduler())
+        return optimizer
+
+
+    def _create_local_gan_model_dir(self, client_id, job_id):
+        model_client_path = self._create_job_models_dir(client_id, job_id)
+        job_models_G_path, job_models_D_path = os.path.join(model_client_path, "tmp_G_models"), os.path.join(model_client_path, "tmp_D_models")
+        if not os.path.exists(job_models_G_path):
+            os.mkdir(job_models_G_path)
+        if not os.path.exists(job_models_D_path):
+            os.mkdir(job_models_D_path)
+        return job_models_G_path, job_models_D_path
+
+    def _calc_gradient_penalty(self, netD, real_data, fake_data):
+        # print "real_data: ", real_data.size(), fake_data.size()
+        # alpha = torch.rand(real_data.shape[0], 1)
+        # alpha = alpha.expand(real_data.shape[0], int(real_data.nelement()/real_data.shape[0])).contiguous().view(real_data.shape[0], 3, 32, 32)
+        device = self.device
+        alpha = torch.FloatTensor(np.random.random((real_data.size(0), 1, 1, 1)))
+        alpha = alpha.to(device)
+
+        interpolates = alpha * real_data + ((1 - alpha) * fake_data)
+
+        interpolates = interpolates.to(device)
+        interpolates = autograd.Variable(interpolates, requires_grad=True)
+
+        disc_interpolates = netD(interpolates)
+
+        gradients = autograd.grad(outputs=disc_interpolates, inputs=interpolates,
+                                  grad_outputs=torch.ones(disc_interpolates.size()).to(device),
+                                  create_graph=True, retain_graph=True, only_inputs=True)[0]
+        gradients = gradients.view(gradients.size(0), -1)
+
+        gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * 10
+        return gradient_penalty
+
+    def _train_gan(self, train_g_model, train_d_model, job_models_G_path, job_models_D_path, fed_step, local_epoch):
+
+        step = 0
+        g_model, d_model = train_g_model.get_model(), train_d_model.get_model()
+        device = self.device
+        g_model, d_model = g_model.to(device), d_model.to(device)
+        g_model.train()
+        d_model.train()
+        # if train_model.get_train_strategy().get_scheduler() is not None:
+        #     scheduler = train_model.get_train_strategy().get_scheduler()
+        while step < local_epoch:
+            # if scheduler is not None:
+            #     scheduler.step()
+            acc = 0
+            optimizer_G = self._get_gan_optimizer(g_model, train_g_model)
+            optimizer_D = self._get_gan_optimizer(d_model, train_d_model)
+
+            train_dataloader = torch.utils.data.DataLoader(self.data,
+                                                           batch_size=self.g_model.get_train_strategy().get_batch_size(),
+                                                           shuffle=True,
+                                                           num_workers=0,
+                                                           pin_memory=True)
+            for idx, (batch_data, batch_target) in enumerate(train_dataloader):
+                batch_imgs, batch_target = batch_data.to(device), batch_target.to(device)
+                z = torch.randn(batch_imgs.shape[0], 100)
+                z = z.view(-1, 100, 1, 1)
+                z = z.to(device)
+                fake_imgs = g_model(z)
+                real_validity = d_model(batch_imgs)
+                fake_validity = d_model(fake_imgs)
+                gradient_penalty = self._calc_gradient_penalty(d_model, batch_imgs, fake_imgs)
+                d_loss = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
+                optimizer_D.zero_grad()
+                d_loss.backward()
+                optimizer_D.step()
+
+                if idx % 5 == 0:
+                    fake_imgs = g_model(z)
+                    fake_validity = d_model(fake_imgs)
+                    g_loss = -torch.mean(fake_validity)
+                    optimizer_G.zero_grad()
+                    g_loss.backward()
+                    optimizer_G.step()
+                    self.logger.info(
+                        "train_D_loss: {}, train_G_loss: {}".format(d_loss, g_loss))
+            step += 1
+        torch.save(g_model.state_dict(),
+                   os.path.join(job_models_G_path, "tmp_G_parameters_{}".format(fed_step)))
+        torch.save(d_model.state_dict(),
+                   os.path.join(job_models_D_path, "tmp_D_parameters_{}".format(fed_step)))
+
+        return d_loss, g_loss
+
+    def train(self):
+
+        job_models_G_path, job_models_D_path = self._create_local_gan_model_dir(self.client_id, self.job.get_job_id())
+
+        while True:
+            self.fed_step[self.job.get_job_id()] = 0 if self.fed_step.get(self.job.get_job_id()) is None else \
+                self.fed_step.get(self.job.get_job_id())
+            if self.fed_step.get(self.job.get_job_id()) is not None and self.fed_step.get(
+                    self.job.get_job_id()) == self.job.get_epoch():
+                self.logger.info("job_{} completed".format(self.job.get_job_id()))
+                break
+            elif self.fed_step.get(self.job.get_job_id()) is not None and self.fed_step.get(
+                    self.job.get_job_id()) > self.job.get_epoch():
+                self.logger.warning("job_{} has completed, final accuracy: {}".format(self.job.get_job_id(), self.acc))
+                break
+            aggregate_g_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(self.job.get_job_id()),
+                                          "{}".format(AGGREGATE_G_PATH))
+            aggregate_d_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(self.job.get_job_id()),
+                                            "{}".format(AGGREGATE_D_PATH))
+            aggregate_g_file, aggregate_d_file, g_fed_step, d_fed_step = self._find_latest_gan_aggregate_model_pars(aggregate_g_path, aggregate_d_path, self.job.get_job_id())
+            fed_step = g_fed_step if g_fed_step == d_fed_step else 0
+            # aggregate_d_file, fed_step = self._find_latest_gan_aggregate_model_pars(aggregate_d_path, self.job.get_job_id())
+            if aggregate_g_file is not None and aggregate_d_file is not None and self.fed_step.get(self.job.get_job_id()) != fed_step:
+                self.logger.info("load g {} parameters, d {} parameters".format(aggregate_g_file, aggregate_d_file))
+                new_g_model = self._load_job_gan_model(self.job.get_job_id(), "G", self.job.get_train_g_model_class_name())
+                new_d_model = self._load_job_gan_model(self.job.get_job_id(), "D", self.job.get_train_d_model_class_name())
+                time.sleep(0.5)
+                model_g_pars = torch.load(aggregate_g_file)
+                model_d_pars = torch.load(aggregate_d_file)
+                new_g_model.load_state_dict(model_g_pars)
+                new_d_model.load_state_dict(model_d_pars)
+                # self._test(model_g_pars)
+                self.g_model.set_model(new_g_model)
+                self.d_model.set_model(new_d_model)
+                self.logger.info("job_{} is training, Aggregator strategy: {}".format(self.job.get_job_id(),
+                                                                                      self.job.get_aggregate_strategy()))
+                d_loss, g_loss = self._train_gan(self.g_model, self.d_model, job_models_G_path, job_models_D_path, self.fed_step.get(self.job.get_job_id()), self.local_epoch)
+
+                self.fed_step[self.job.get_job_id()] = fed_step
+
+
+
+
 class TrainStandloneDistillationStrategy(TrainDistillationStrategy):
     """
     TrainStandloneDistillationStrategy is responsible for controlling the process of distillation training in standalone mode
@@ -754,16 +950,12 @@ class TrainStandloneDistillationStrategy(TrainDistillationStrategy):
 
                 self.fed_step[self.job.get_job_id()] = self.fed_step.get(self.job.get_job_id()) + 1
 
-            # else:
-            #     global_model_pars_dir = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(self.job.get_job_id()),
-            #                                        "global_models")
-            #     if not os.path.exists(os.path.join(global_model_pars_dir, "global_parameters_{}".format(1))):
-            #         new_model = self._load_job_model(self.job.get_job_id(), self.job.get_train_model_class_name())
-            #         model_pars = torch.load(aggregate_file)
-            #         self._test(model_pars)
-            #         new_model.load_state_dict(model_pars)
-            #         self.model.set_model(new_model)
-            #         self._train(self.model, global_model_pars_dir, 1, self.local_epoch)
+
+class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
+    pass
+
+
+
 
 
 class TrainMPCNormalStrategy(TrainNormalStrategy):

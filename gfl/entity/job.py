@@ -15,13 +15,15 @@
 
 class Job(object):
 
-    def __init__(self, server_host, job_id, train_model, train_model_class_name, aggregate_strategy, epoch,
+    def __init__(self, server_host, job_id, train_g_model, train_d_model, train_g_model_class_name, train_d_model_class_name, aggregate_strategy, epoch,
                  distillation_alpha=None, l2_dist=False):
         self.server_host = server_host
         self.job_id = job_id
         self.epoch = epoch
-        self.train_model = train_model
-        self.train_model_class_name = train_model_class_name
+        self.train_g_model = train_g_model
+        self.train_d_model = train_d_model
+        self.train_g_model_class_name = train_g_model_class_name
+        self.train_d_model_class_name = train_d_model_class_name
         self.aggregate_strategy = aggregate_strategy
         self.alpha = distillation_alpha
         self.l2_dist = l2_dist
@@ -38,14 +40,11 @@ class Job(object):
     def set_epoch(self, epoch):
         self.epoch = epoch
 
-    def set_train_model(self, train_model):
-        self.train_model = train_model
+    def get_train_g_model_class_name(self):
+        return self.train_g_model_class_name
 
-    def set_train_model_class_name(self, train_model_class_name):
-        self.train_model_class_name = train_model_class_name
-
-    def get_train_model_class_name(self):
-        return self.train_model_class_name
+    def get_train_d_model_class_name(self):
+        return self.train_d_model_class_name
 
     def get_server_host(self):
         return self.server_host
@@ -55,6 +54,12 @@ class Job(object):
 
     def get_train_model(self):
         return self.train_model
+
+    def get_train_g_model(self):
+        return self.train_g_model
+
+    def get_train_d_model(self):
+        return self.train_d_model
 
     def set_aggregate_stragety(self, aggregate_strategy):
         self.aggregate_strategy = aggregate_strategy

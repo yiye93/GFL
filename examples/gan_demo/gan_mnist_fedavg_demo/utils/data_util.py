@@ -36,9 +36,9 @@ def save_test_dataset(testset):
 def data_split(dataset, split):
     split_num = [int(len(dataset) / split) for _ in range(split)]
     split_cum = torch.tensor(list(split_num)).cumsum(dim=0).tolist()
-    # idx_dataset = list(range(len(dataset.targets)))
+    idx_dataset = list(range(len(dataset.targets)))
     # split by class
-    idx_dataset = sorted(range(len(dataset.targets)), key=lambda k: dataset.targets[k])
+    # idx_dataset = sorted(range(len(dataset.targets)), key=lambda k: dataset.targets[k])
     # split by random
     splited_data = [idx_dataset[off - l:off]
                     for off, l in zip(split_cum, split_num)]
@@ -137,28 +137,28 @@ def Dataset(dataset):
         tra_trans = transforms.Compose([
             transforms.Pad(2, padding_mode='edge'),
             # transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
+            # transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
             # transforms.Lambda(lambda x: x.repeat(3, 1, 1)),
-            # transforms.Normalize((0.1307,), (0.3081,)),
-            transforms.Normalize((0.4914, 0.4822, 0.4465),
-                                 (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.1307,), (0.3081,)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465),
+            #                      (0.2023, 0.1994, 0.2010)),
         ])
         val_trans = transforms.Compose([
             transforms.Pad(2, padding_mode='edge'),
             # transforms.ToPILImage(),
-            transforms.Grayscale(num_output_channels=3),
+            # transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
-            # transforms.Normalize((0.1307,), (0.3081,)),
-            transforms.Normalize((0.4914, 0.4822, 0.4465),
-                                 (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.1307,), (0.3081,)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465),
+            #                      (0.2023, 0.1994, 0.2010)),
         ])
         if dataset == 'femnist':
             trainset = FEMNIST(root='~/data', train=True, download=True, transform=tra_trans)
             testset = FEMNIST(root='~/data', train=False, download=True, transform=val_trans)
         if dataset == 'mnist':
-            trainset = MNIST(root='~/data', train=True, download=True, transform=tra_trans)
-            testset = MNIST(root='~/data', train=False, download=True, transform=val_trans)
+            trainset = MNIST(root='/home/hyf/data', train=True, download=True, transform=tra_trans)
+            testset = MNIST(root='/home/hyf/data', train=False, download=True, transform=val_trans)
         if dataset == 'fashonmnist':
             trainset = FashionMNIST(root='~/data', train=True, download=True, transform=tra_trans)
             testset = FashionMNIST(root='~/data', train=False, download=True, transform=val_trans)

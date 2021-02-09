@@ -34,6 +34,11 @@ class FLClient(object):
         else:
             return self._get_models_from_remote(server_url)
 
+    def get_remote_gan_gfl_models(self, server_url=None):
+        if server_url is None:
+            return self._get_gan_models_from_local()
+        # else:
+        #     return self._get_models_from_remote(server_url)
 
     def _get_models_from_local(self):
         model_list = []
@@ -47,6 +52,20 @@ class FLClient(object):
             gfl_model.set_job_id(job.get_job_id())
             model_list.append(gfl_model)
         return model_list
+
+    def _get_gan_models_from_local(self):
+        JobUtils.get_job_from_remote(None, self.job_path)
+        job = JobUtils.list_all_jobs(self.job_path)[0]
+
+        g_model, d_model = self._get_g_model_from_job(job), self._get_d_model_from_job(job)
+        gfl_g_model, gfl_d_model = Model(), Model()
+        gfl_g_model.set_model(g_model)
+        gfl_d_model.set_model(d_model)
+        gfl_g_model.set_job_id(job.get_job_id())
+        gfl_d_model.set_job_id(job.get_job_id())
+
+        return gfl_g_model, gfl_d_model
+
 
     def _get_models_from_remote(self, server_url):
         model_list = []
@@ -67,6 +86,19 @@ class FLClient(object):
         model_class = getattr(module, job.get_train_model_class_name())
         return model_class()
 
+    def _get_g_model_from_job(self, job):
+        job_id = job.get_job_id()
+        module = importlib.import_module("res.models.models_{}.init_g_model_{}".format(job_id, job_id),
+                                         "init_g_model_{}".format(job_id))
+        model_class = getattr(module, job.get_train_g_model_class_name())
+        return model_class()
+
+    def _get_d_model_from_job(self, job):
+        job_id = job.get_job_id()
+        module = importlib.import_module("res.models.models_{}.init_d_model_{}".format(job_id, job_id),
+                                         "init_d_model_{}".format(job_id))
+        model_class = getattr(module, job.get_train_d_model_class_name())
+        return model_class()
 
 
 

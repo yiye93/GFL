@@ -40,7 +40,7 @@ class JobManager(object):
         self.logger = LoggerFactory.getLogger("JobManager", -1, logging.INFO)
 
     def generate_job(self, work_mode=WorkModeStrategy.WORKMODE_STANDALONE,
-                     fed_strategy=FederateStrategy.FED_AVG, epoch=0, model=None, distillation_alpha=None, l2_dist=False):
+                     fed_strategy=FederateStrategy.FED_AVG, epoch=0, g_model=None, d_model=None, distillation_alpha=None, l2_dist=False):
         """
         Generate job with user-defined strategy
         :param work_mode:
@@ -57,8 +57,8 @@ class JobManager(object):
             if epoch == 0:
                 raise GFLException("generate_job() missing 1 positoonal argument: 'epoch'")
 
-            job = Job(None, JobUtils.generate_job_id(), inspect.getsourcefile(model),
-                      model.__name__, fed_strategy, epoch,  distillation_alpha=distillation_alpha, l2_dist=l2_dist)
+            job = Job(None, JobUtils.generate_job_id(), inspect.getsourcefile(g_model), inspect.getsourcefile(d_model),
+                       g_model.__name__, d_model.__name__, fed_strategy, epoch,  distillation_alpha=distillation_alpha, l2_dist=l2_dist)
 
             if work_mode == WorkModeStrategy.WORKMODE_STANDALONE:
                 job.set_server_host("localhost:8080")
@@ -67,7 +67,7 @@ class JobManager(object):
 
             return job
 
-    def submit_job(self, job, model):
+    def submit_job(self, job, g_model, d_model):
         """
         Submit job
         :param job:
@@ -79,13 +79,21 @@ class JobManager(object):
             job_model_dir = os.path.join(MODEL_PATH, "models_{}".format(job.get_job_id()))
             if not os.path.exists(job_model_dir):
                 os.makedirs(job_model_dir)
-            torch.save(model.state_dict(), os.path.join(job_model_dir, "init_model_pars_{}".format(job.get_job_id())))
+            # torch.save(model.state_dict(), os.path.join(job_model_dir, "init_model_pars_{}".format(job.get_job_id())))
+            torch.save(g_model.state_dict(), os.path.join(job_model_dir, "init_g_model_pars_{}".format(job.get_job_id())))
+            torch.save(d_model.state_dict(), os.path.join(job_model_dir, "init_d_model_pars_{}".format(job.get_job_id())))
 
-            init_model_path = os.path.join(job_model_dir, "init_model_{}.py".format(job.get_job_id()))
-            with open(init_model_path, "w") as model_f:
-                with open(job.get_train_model(), "r") as model_f2:
+            init_g_model_path = os.path.join(job_model_dir, "init_g_model_{}.py".format(job.get_job_id()))
+            init_d_model_path = os.path.join(job_model_dir, "init_d_model_{}.py".format(job.get_job_id()))
+            with open(init_g_model_path, "w") as model_f:
+                with open(job.get_train_g_model(), "r") as model_f2:
                     for line in model_f2.readlines():
                         model_f.write(line)
+            with open(init_d_model_path, "w") as model_f:
+                with open(job.get_train_d_model(), "r") as model_f2:
+                    for line in model_f2.readlines():
+                        model_f.write(line)
+
             if not os.path.exists(self.job_path):
                 os.mkdir(self.job_path)
             with open(os.path.join(self.job_path, "job_{}".format(job.get_job_id())), "wb") as f:

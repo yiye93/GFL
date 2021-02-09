@@ -118,9 +118,11 @@ class JobEncoder(json.JSONEncoder):
         if isinstance(o, Job):
             return {
                 'job_id': o.get_job_id(),
-                'train_model': o.get_train_model(),
+                'train_g_model': o.get_train_g_model(),
+                'train_d_model': o.get_train_d_model(),
                 'epoch': o.get_epoch(),
-                'train_model_class_name': o.get_train_model_class_name(),
+                'train_g_model_class_name': o.get_train_g_model_class_name(),
+                'train_d_model_class_name': o.get_train_d_model_class_name(),
                 'server_host': o.get_server_host(),
                 'aggregate_strategy': o.get_aggregate_strategy().value,
                 'distillation_alpha': o.get_distillation_alpha(),
@@ -132,8 +134,8 @@ class JobEncoder(json.JSONEncoder):
 class JobDecoder(json.JSONDecoder):
     def decode(self, s, _w=WHITESPACE.match):
         dict = super().decode(s)
-        return Job(dict['server_host'], dict['job_id'], dict['train_model'],
-                   dict['train_model_class_name'],
+        return Job(dict['server_host'], dict['job_id'], dict['train_g_model'], dict['train_d_model'],
+                   dict['train_g_model_class_name'], dict['train_d_model_class_name'],
                    dict['aggregate_strategy'], dict['epoch'], dict['distillation_alpha'], dict['l2_dist'])
 
 #

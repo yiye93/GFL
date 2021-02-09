@@ -41,7 +41,7 @@ class Aggregator(object):
         self.work_mode = work_mode
 
 
-    def load_model_pars(self, job_model_pars_path, fed_step):
+    def load_gan_model_pars(self, job_model_pars_path, fed_step):
         """
 
         :param job_model_pars_path:
@@ -49,26 +49,30 @@ class Aggregator(object):
         :return:
         """
         fed_step = 0 if fed_step is None else fed_step
-        job_model_pars = []
-        last_model_par_file_num = 0
+        g_model_pars, d_model_pars = [], []
+        last_g_model_par_file_num, last_d_model_par_file_num = 0, 0
         # print("job_model_pars_path: ", job_model_pars_path)
         for f in os.listdir(job_model_pars_path):
             if f.find("models_") != -1:
-                one_model_par_path = os.path.join(job_model_pars_path, f)
+                g_model_par_path = os.path.join(job_model_pars_path, f, "tmp_G_models")
                 # print("one_model_par_path: ", one_model_par_path)
-                one_model_par_files = os.listdir(one_model_par_path)
-                if one_model_par_files and len(one_model_par_files) != 0:
-                    last_model_par_file_num = len(one_model_par_files)
-                    if last_model_par_file_num > fed_step:
-                        model_par = torch.load(os.path.join(one_model_par_path, "tmp_parameters_{}".format(last_model_par_file_num-1)))
-                        job_model_pars.append(model_par)
+                d_model_par_path = os.path.join(job_model_pars_path, f, "tmp_D_models")
+                g_model_par_files, d_model_par_files = os.listdir(g_model_par_path), os.listdir()
+                if len(g_model_par_files) != 0 and len(d_model_par_files) != 0:
+                    last_g_model_par_file_num, last_d_model_par_file_num = len(g_model_par_files), len(d_model_par_files)
+                    if last_g_model_par_file_num > fed_step and last_d_model_par_file_num > fed_step:
+                        g_model_par = torch.load(os.path.join(g_model_par_path, "tmp_G_parameters_{}".format(last_g_model_par_file_num-1)))
+                        g_model_pars.append(g_model_par)
+                        d_model_par = torch.load(
+                            os.path.join(d_model_par_path, "tmp_D_parameters_{}".format(last_g_model_par_file_num - 1)))
+                        d_model_pars.append(d_model_par)
                     else:
                         return None, 0
                 else:
                     # wait for other clients finish training
                     return None, 0
 
-        return job_model_pars, last_model_par_file_num
+        return g_model_pars, d_model_pars, last_g_model_par_file_num
 
     def _find_last_model_file_num(self, files):
         last_num = 0
@@ -89,32 +93,44 @@ class FedAvgAggregator(Aggregator):
         self.fed_step = {}
         self.logger = LoggerFactory.getLogger("FedAvgAggregator", -1, logging.INFO)
     def aggregate(self):
-        """
-
-        :return:
-        """
-
         job_list = JobManager.get_job_list(self.job_path)
         WAITING_BROADCAST_AGGREGATED_JOB_ID_LIST.clear()
         for job in job_list:
-            job_model_pars, fed_step = self.load_model_pars(
+            g_model_pars, d_model_pars, fed_step = self.load_gan_model_pars(
                 os.path.join(self.base_model_path, "models_{}".format(job.get_job_id())),
                 self.fed_step.get(job.get_job_id()))
             # print("fed_step: {}, self.fed_step: {}, job_model_pars: {}".format(fed_step, self.fed_step.get(job.get_job_id()), job_model_pars))
             job_fed_step = 0 if self.fed_step.get(job.get_job_id()) is None else self.fed_step.get(job.get_job_id())
-            if job_fed_step != fed_step and job_model_pars is not None:
+            if job_fed_step != fed_step and g_model_pars is not None and d_model_pars is not None:
                 self.logger.info("Aggregating......")
-                self._exec(job_model_pars, self.base_model_path, job.get_job_id(), fed_step)
+                self._exec_gan_aggregation(g_model_pars, "G", self.base_model_path, job.get_job_id(), fed_step)
+                self._exec_gan_aggregation(d_model_pars, "D", self.base_model_path, job.get_job_id(), fed_step)
                 self.fed_step[job.get_job_id()] = fed_step
                 WAITING_BROADCAST_AGGREGATED_JOB_ID_LIST.append(job.get_job_id())
-                if job.get_epoch() <= self.fed_step[job.get_job_id()]:
-                    self._save_final_model_pars(job.get_job_id(), os.path.join(self.base_model_path,
-                                                                               "models_{}".format(job.get_job_id()),
-                                                                               "tmp_aggregate_pars"),
-                                                self.fed_step[job.get_job_id()])
+                # if job.get_epoch() <= self.fed_step[job.get_job_id()]:
+                #     self._save_final_model_pars(job.get_job_id(), os.path.join(self.base_model_path,
+                #                                                                "models_{}".format(job.get_job_id()),
+                #                                                                "tmp_aggregate_pars"),
+                #                                 self.fed_step[job.get_job_id()])
                 if self.work_mode == WorkModeStrategy.WORKMODE_CLUSTER:
                     self._broadcast(WAITING_BROADCAST_AGGREGATED_JOB_ID_LIST, CONNECTED_TRAINER_LIST,
                                     self.base_model_path)
+
+    def _exec_gan_aggregation(self, job_model_pars, flag, base_model_path, job_id, fed_step):
+        avg_model_par = job_model_pars[0]
+        for key in avg_model_par.keys():
+            for i in range(1, len(job_model_pars)):
+                avg_model_par[key] += job_model_pars[i][key]
+            avg_model_par[key] = torch.div(avg_model_par[key], len(job_model_pars))
+
+        tmp_aggregate_dir = os.path.join(base_model_path, "models_{}".format(job_id), "tmp_aggregate_g_pars") if flag == "G" else os.path.join(base_model_path, "models_{}".format(job_id), "tmp_aggregate_d_pars")
+        tmp_aggregate_path = os.path.join(tmp_aggregate_dir,
+                                          "{}_{}".format("avg_pars", fed_step))
+        if not os.path.exists(tmp_aggregate_dir):
+            os.makedirs(tmp_aggregate_dir)
+        torch.save(avg_model_par, tmp_aggregate_path)
+
+        self.logger.info("job: {} the {}th round parameters aggregated successfully!".format(job_id, fed_step))
 
 
     def _exec(self, job_model_pars, base_model_path, job_id, fed_step):
