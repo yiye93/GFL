@@ -604,7 +604,7 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
                 aggregate_d_file = file
                 break
 
-        if len(g_file_list) != 0 and len(d_file_list) and aggregate_g_file != "" and aggregate_d_file != "":
+        if len(g_file_list) != 0 and len(d_file_list) != 0 and aggregate_g_file != "" and aggregate_d_file != "":
             return os.path.join(aggregate_g_path, aggregate_g_file), os.path.join(aggregate_d_path, aggregate_d_file),  len(g_file_list), len(d_file_list)
         return None, None, 0, 0
 
@@ -721,9 +721,9 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
             aggregate_d_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(self.job.get_job_id()),
                                             "{}".format(AGGREGATE_D_PATH))
             aggregate_g_file, aggregate_d_file, g_fed_step, d_fed_step = self._find_latest_gan_aggregate_model_pars(aggregate_g_path, aggregate_d_path, self.job.get_job_id())
-            fed_step = g_fed_step if g_fed_step == d_fed_step else 0
+
             # aggregate_d_file, fed_step = self._find_latest_gan_aggregate_model_pars(aggregate_d_path, self.job.get_job_id())
-            if aggregate_g_file is not None and aggregate_d_file is not None and self.fed_step.get(self.job.get_job_id()) != fed_step:
+            if aggregate_g_file is not None and aggregate_d_file is not None and self.fed_step.get(self.job.get_job_id()) != g_fed_step and g_fed_step == d_fed_step:
                 self.logger.info("load g {} parameters, d {} parameters".format(aggregate_g_file, aggregate_d_file))
                 new_g_model = self._load_job_gan_model(self.job.get_job_id(), "G", self.job.get_train_g_model_class_name())
                 new_d_model = self._load_job_gan_model(self.job.get_job_id(), "D", self.job.get_train_d_model_class_name())

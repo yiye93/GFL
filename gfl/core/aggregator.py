@@ -105,6 +105,7 @@ class FedAvgAggregator(Aggregator):
                 self.logger.info("Aggregating......")
                 self._exec_gan_aggregation(g_model_pars, "G", self.base_model_path, job.get_job_id(), fed_step)
                 self._exec_gan_aggregation(d_model_pars, "D", self.base_model_path, job.get_job_id(), fed_step)
+                self.logger.info("job: {} the {}th round parameters aggregated successfully!".format(job.get_job_id(), fed_step))
                 self.fed_step[job.get_job_id()] = fed_step
                 WAITING_BROADCAST_AGGREGATED_JOB_ID_LIST.append(job.get_job_id())
                 # if job.get_epoch() <= self.fed_step[job.get_job_id()]:
@@ -130,7 +131,6 @@ class FedAvgAggregator(Aggregator):
             os.makedirs(tmp_aggregate_dir)
         torch.save(avg_model_par, tmp_aggregate_path)
 
-        self.logger.info("job: {} the {}th round parameters aggregated successfully!".format(job_id, fed_step))
 
 
     def _exec(self, job_model_pars, base_model_path, job_id, fed_step):
