@@ -23,6 +23,7 @@ import requests
 import importlib
 import torch.nn.functional as F
 import torch.autograd as autograd
+from torchvision.utils import save_image
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 import numpy as np
@@ -625,6 +626,14 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
             os.mkdir(job_models_D_path)
         return job_models_G_path, job_models_D_path
 
+    def _save_generated_img(self, client_id, job_id, fed_step, fake_imgs):
+        generated_imgs_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
+                                               "models_{}".format(client_id), "generated_imgs")
+        if not os.path.exists(generated_imgs_path):
+            os.mkdir(generated_imgs_path)
+        save_image(fake_imgs, os.path.join(generated_imgs_path, "img_{}.jpg".format(fed_step)))
+
+
     def _calc_gradient_penalty(self, netD, real_data, fake_data):
         # print "real_data: ", real_data.size(), fake_data.size()
         # alpha = torch.rand(real_data.shape[0], 1)
@@ -694,6 +703,7 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
                     self.logger.info(
                         "train_D_loss: {}, train_G_loss: {}".format(d_loss, g_loss))
             step += 1
+        self._save_generated_img(self.client_id, self.job.get_job_id(), fed_step, fake_imgs)
         torch.save(g_model.state_dict(),
                    os.path.join(job_models_G_path, "tmp_G_parameters_{}".format(fed_step)))
         torch.save(d_model.state_dict(),
