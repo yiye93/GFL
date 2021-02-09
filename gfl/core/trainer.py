@@ -739,7 +739,7 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
                                                                                       self.job.get_aggregate_strategy()))
                 d_loss, g_loss = self._train_gan(self.g_model, self.d_model, job_models_G_path, job_models_D_path, self.fed_step.get(self.job.get_job_id()), self.local_epoch)
 
-                self.fed_step[self.job.get_job_id()] = fed_step
+                self.fed_step[self.job.get_job_id()] = g_fed_step
 
 
 
