@@ -1135,7 +1135,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
     def _load_other_gan_models_pars(self, job_id, fed_step):
 
         job_model_base_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id))
-        other_d_models_pars = [], []
+        other_d_models_pars = []
         connected_clients_num = 0
         # client_distillation_g_model_path = os.path.join(job_model_base_path, "models_{}".format(self.client_id),
         #                                               "distillation_g_model_pars")
