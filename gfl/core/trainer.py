@@ -1349,7 +1349,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
             # self.logger.info("job_{} is training, Aggregator strategy: {}, L2_dist: {}".format(self.job.get_job_id(),
             #                                                                                    self.job.get_aggregate_strategy(),
             #                                                                                    self.job.get_l2_dist()))
-            if other_d_model_pars is not None and connected_clients_num:
+            if len(other_d_model_pars) != 0 and connected_clients_num:
 
                 self.logger.info("model distillating....")
 
