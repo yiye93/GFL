@@ -1142,13 +1142,13 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         client_distillation_d_model_path = os.path.join(job_model_base_path, "models_{}".format(self.client_id),
                                                         "distillation_d_model_pars")
         if len(os.listdir(client_distillation_d_model_path)) >= fed_step:
-            return other_d_models_pars, 0
+            return None, 0
         for f in os.listdir(job_model_base_path):
             if f.find("models_") != -1 and int(f.split("_")[-1]) != int(self.client_id):
                 connected_clients_num += 1
                 d_files = os.listdir(os.path.join(job_model_base_path, f, "tmp_d_model_pars"))
                 if len(d_files) == 0 or len(d_files) < fed_step:
-                    return other_d_models_pars, 0
+                    return None, 0
                 else:
                     # other_g_models_pars.append(os.path.join(job_model_base_path, f, "tmp_g_model_pars", "tmp_G_parameters_{}".format(fed_step)))
                     other_d_models_pars.append(os.path.join(job_model_base_path, f, "tmp_d_model_pars",
@@ -1349,7 +1349,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
             # self.logger.info("job_{} is training, Aggregator strategy: {}, L2_dist: {}".format(self.job.get_job_id(),
             #                                                                                    self.job.get_aggregate_strategy(),
             #                                                                                    self.job.get_l2_dist()))
-            if len(other_d_model_pars) != 0 and connected_clients_num:
+            if other_d_model_pars is not None and connected_clients_num != 0:
 
                 self.logger.info("model distillating....")
 
