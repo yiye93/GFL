@@ -1369,8 +1369,9 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                         if is_fed_avg:
                             self._execute_gan_fed_avg(self.client_id, self.job.get_job_id(),
                                                   self.fed_step[self.job.get_job_id()] + 1, distillation_d_model_pars)
+                            self.logger.info("execute_gan_fed_avg success")
                             break
-                        time.sleep(2)
+                        time.sleep(1)
 
                 self.fed_step[self.job.get_job_id()] = self.fed_step.get(self.job.get_job_id()) + 1
 
