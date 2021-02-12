@@ -1278,6 +1278,12 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
 
         torch.save(global_model_pars, global_model_pars_path)
 
+    def _load_gan_distillation_model(self, distillation_d_path):
+        new_d_model = self._load_job_model(self.job.get_job_id(), self.job.get_train_d_model_class_name())
+        d_model_pars = torch.load(distillation_d_path)
+        new_d_model.load_state_dict(d_model_pars)
+        return new_d_model
+
     def _gan_fed_avg_aggregate(self, disillation_d_model_pars_list, job_id, fed_step):
         # avg_g_model_par = disillation_g_model_pars_list[0]
         avg_d_model_par = disillation_d_model_pars_list[0]
@@ -1304,7 +1310,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         #     distillation_g_model_list.append(distillation_g_model)
 
         for distillation_d_model_pars_file in distillation_d_model_pars_file_list:
-            distillation_d_model = self._load_distillation_model(distillation_d_model_pars_file)
+            distillation_d_model = self._load_gan_distillation_model(distillation_d_model_pars_file)
             distillation_d_model_list.append(distillation_d_model)
 
         # kl_list, sum_kl_loss = self._calc_kl_loss(last_global_model, distillation_model_list)
