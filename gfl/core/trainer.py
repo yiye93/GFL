@@ -1256,7 +1256,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 # g_file_list = os.listdir(g_distillation_dir)
                 d_file_list = os.listdir(d_distillation_dir)
                 # file_list = sorted(file_list, key=lambda x: os.path.getmtime(os.path.join(distillation_dir, x)))
-                if len(d_file_list) or len(d_file_list) != fed_step:
+                if len(d_file_list) == 0 or len(d_file_list) != fed_step:
                     return False, []
                 else:
                     # distillation_g_model_pars.append(os.path.join(g_distillation_dir, "tmp_G_parameters_{}".format(fed_step)))
