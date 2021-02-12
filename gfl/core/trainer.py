@@ -1325,8 +1325,9 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         distillation_g_model_path, distillation_d_model_path = self._create_dislillation_gan_model_pars_path(self.client_id, self.job.get_job_id())
         local_g_models_path, local_d_models_path = self._create_job_gan_tmp_models_dir(self.client_id, self.job.get_job_id())
         self._init_gan_global_model(self.job.get_job_id(), 0)
+        self.fed_step[self.job.get_job_id()] = 0
         while True:
-            self.fed_step[self.job.get_job_id()] = self._get_fed_step(self.job.get_job_id())
+            # self.fed_step[self.job.get_job_id()] = self._get_fed_step(self.job.get_job_id())
 
             if self.fed_step.get(self.job.get_job_id()) is not None and self.fed_step.get(
                     self.job.get_job_id()) >= self.job.get_epoch():
