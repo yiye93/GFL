@@ -1279,7 +1279,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         torch.save(global_model_pars, global_model_pars_path)
 
     def _load_gan_distillation_model(self, distillation_d_path):
-        new_d_model = self._load_job_model(self.job.get_job_id(), self.job.get_train_d_model_class_name())
+        new_d_model = self._load_job_gan_model(self.job.get_job_id(), "D", self.job.get_train_d_model_class_name())
         d_model_pars = torch.load(distillation_d_path)
         new_d_model.load_state_dict(d_model_pars)
         return new_d_model
