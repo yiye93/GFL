@@ -1066,6 +1066,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         # self.logger.info("load g parameters {}, load d parameters {}".format(g_global_model_path, d_global_model_path))
         if not os.path.exists(g_global_model_path) or not os.path.exists(d_global_model_path):
             return None, None
+        self.logger.info("load g {} parameters, load f {} parameters".format(g_global_model_path, d_global_model_path))
         new_g_model = self._load_job_gan_model(self.job.get_job_id(), "G", self.job.get_train_g_model_class_name())
         new_d_model = self._load_job_gan_model(self.job.get_job_id(), "D", self.job.get_train_d_model_class_name())
         time.sleep(0.5)
