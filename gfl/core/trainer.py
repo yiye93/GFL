@@ -1143,13 +1143,13 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         client_distillation_d_model_path = os.path.join(job_model_base_path, "models_{}".format(self.client_id),
                                                         "distillation_d_model_pars")
         if len(os.listdir(client_distillation_g_model_path)) >= fed_step and len(os.listdir(client_distillation_d_model_path)) >= fed_step:
-            return None, 0
+            return None, None, 0
         for f in os.listdir(job_model_base_path):
             if f.find("models_") != -1 and int(f.split("_")[-1]) != int(self.client_id):
                 connected_clients_num += 1
                 d_files = os.listdir(os.path.join(job_model_base_path, f, "tmp_d_model_pars"))
                 if len(d_files) == 0 or len(d_files) < fed_step:
-                    return None, 0
+                    return None, None, 0
                 else:
                     other_g_models_pars.append(os.path.join(job_model_base_path, f, "tmp_g_model_pars", "tmp_G_parameters_{}".format(fed_step)))
                     other_d_models_pars.append(os.path.join(job_model_base_path, f, "tmp_d_model_pars",
@@ -1255,7 +1255,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 d_file_list = os.listdir(d_distillation_dir)
                 # file_list = sorted(file_list, key=lambda x: os.path.getmtime(os.path.join(distillation_dir, x)))
                 if len(g_file_list) == 0 or len(d_file_list) == 0 or len(g_file_list) != fed_step or len(d_file_list) != fed_step:
-                    return False, []
+                    return False, [], []
                 else:
                     distillation_g_model_pars.append(os.path.join(g_distillation_dir, "tmp_G_parameters_{}".format(fed_step)))
                     distillation_d_model_pars.append(
@@ -1342,8 +1342,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     self._train_gan(self.train_g_model, self.train_d_model, local_g_models_path, local_d_models_path, self.fed_step[self.job.get_job_id()] + 1,
                                 self.local_epoch)
             other_g_model_pars, other_d_model_pars, connected_clients_num = self._load_other_gan_models_pars(self.job.get_job_id(),
-                                                                                   self.fed_step[
-                                                                                       self.job.get_job_id()] + 1)
+                                                                                   self.fed_step[self.job.get_job_id()]+1)
             # job_model = self._load_job_model(self.job.get_job_id(), self.job.get_train_model_class_name())
             # self.logger.info("job_{} is training, Aggregator strategy: {}, L2_dist: {}".format(self.job.get_job_id(),
             #                                                                                    self.job.get_aggregate_strategy(),
