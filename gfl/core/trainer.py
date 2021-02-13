@@ -981,7 +981,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
             os.mkdir(generated_imgs_path)
         save_image(fake_imgs, os.path.join(generated_imgs_path, "img_{}.jpg".format(fed_step)))
 
-    def _calc_gradient_penalty(self, flag, netD, real_data, fake_data):
+    def _calc_gradient_penalty(self, netD, real_data, fake_data):
         device = self.device
         alpha = torch.FloatTensor(np.random.random((real_data.size(0), 1, 1, 1)))
         alpha = alpha.to(device)
@@ -991,10 +991,9 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         interpolates = interpolates.to(device)
         interpolates = autograd.Variable(interpolates, requires_grad=True)
 
-        if flag:
-            disc_interpolates = netD(interpolates)
-        else:
-            disc_interpolates = netD(interpolates).detach()
+
+        disc_interpolates = netD(interpolates)
+
 
         gradients = autograd.grad(outputs=disc_interpolates, inputs=interpolates,
                                   grad_outputs=torch.ones(disc_interpolates.size()).to(device),
@@ -1107,7 +1106,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 fake_imgs = g_model(z)
                 real_validity = d_model(batch_imgs)
                 fake_validity = d_model(fake_imgs)
-                gradient_penalty = self._calc_gradient_penalty(True, d_model, batch_imgs, fake_imgs)
+                gradient_penalty = self._calc_gradient_penalty(d_model, batch_imgs, fake_imgs)
                 d_loss = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
                 optimizer_D.zero_grad()
                 d_loss.backward()
@@ -1212,16 +1211,16 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
 
                 for other_d_model_par in other_d_models_pars:
                     other_d_model.load_state_dict(other_d_model_par)
-                    other_real_validity = other_d_model(batch_data).detach()
-                    other_fake_validity = other_d_model(fake_imgs).detach()
-                    other_gradient_penalty = self._calc_gradient_penalty(False, other_d_model, batch_data, fake_imgs)
+                    other_real_validity = other_d_model(batch_data)
+                    other_fake_validity = other_d_model(fake_imgs)
+                    other_gradient_penalty = self._calc_gradient_penalty(other_d_model, batch_data, fake_imgs)
                     loss_d_distillation += (torch.mean(other_fake_validity) - torch.mean(other_real_validity) + other_gradient_penalty)
                     # loss_d_distillation += F.mse_loss(real_validity, other_model_d_pred)
                     # loss_d_distillation += self._compute_loss(LossStrategy.KLDIV_LOSS, F.log_softmax(real_validity, dim=1),
                     #                                             F.softmax(other_model_d_kl_pred, dim=1))
 
 
-                gradient_penalty = self._calc_gradient_penalty(True, d_model, batch_data, fake_imgs)
+                gradient_penalty = self._calc_gradient_penalty(d_model, batch_data, fake_imgs)
                 d_loss_s = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
                 d_loss = d_loss_s + loss_d_distillation
                 d_optimizer.zero_grad()
@@ -1232,8 +1231,8 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 fake_validity = d_model(fake_imgs)
                 for other_g_model_par in other_g_models_pars:
                     other_g_model.load_state_dict(other_g_model_par)
-                    other_model_g_pred = other_g_model(z).detach()
-                    other_fake_validity = d_model(other_model_g_pred)
+                    other_fake_imgs = other_g_model(z)
+                    other_fake_validity = d_model(other_fake_imgs)
                     loss_g_distillation += other_fake_validity
                 g_loss = -torch.mean(fake_validity + loss_g_distillation)
                 g_optimizer.zero_grad()
