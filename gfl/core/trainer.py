@@ -1219,17 +1219,22 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     # loss_d_distillation += self._compute_loss(LossStrategy.KLDIV_LOSS, F.log_softmax(real_validity, dim=1),
                     #                                             F.softmax(other_model_d_kl_pred, dim=1))
 
-                g_loss_s = -torch.mean(fake_validity)
-                g_loss = g_loss_s + self.job.get_distillation_alpha() * loss_g_distillation
+
                 gradient_penalty = self._calc_gradient_penalty(d_model, batch_data, fake_imgs)
                 d_loss_s = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
                 d_loss = d_loss_s + self.job.get_distillation_alpha() * loss_d_distillation
-                g_optimizer.zero_grad()
                 d_optimizer.zero_grad()
                 d_loss.backward()
+                d_optimizer.step()
+
+                fake_imgs = g_model(z)
+                fake_validity = d_model(fake_imgs)
+                g_loss_s = -torch.mean(fake_validity)
+                g_loss = g_loss_s + self.job.get_distillation_alpha() * loss_g_distillation
+                g_optimizer.zero_grad()
                 g_loss.backward()
                 g_optimizer.step()
-                d_optimizer.step()
+
                 if idx % 100 == 0:
                     self.logger.info("distillation_loss: {}".format(d_loss.item()))
                 #     self.logger.info("distillation_loss: {}".format(loss.item()))
