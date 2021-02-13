@@ -1211,11 +1211,11 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
 
                 for other_d_model_par in other_d_models_pars:
                     other_d_model.load_state_dict(other_d_model_par)
-                    other_real_validity = other_d_model(batch_data)
-                    other_fake_validity = other_d_model(fake_imgs)
-                    other_gradient_penalty = self._calc_gradient_penalty(other_d_model, batch_data, fake_imgs)
-                    loss_d_distillation += (torch.mean(other_fake_validity) - torch.mean(other_real_validity) + other_gradient_penalty)
-                    # loss_d_distillation += F.mse_loss(real_validity, other_model_d_pred)
+                    other_real_validity = other_d_model(batch_data).detach()
+                    other_fake_validity = other_d_model(fake_imgs).detach()
+                    # other_gradient_penalty = self._calc_gradient_penalty(other_d_model, batch_data, fake_imgs)
+                    # loss_d_distillation += (torch.mean(other_fake_validity) - torch.mean(other_real_validity) + other_gradient_penalty)
+                    loss_d_distillation += (F.mse_loss(real_validity, other_real_validity) + F.mse_loss(fake_validity, other_fake_validity))
                     # loss_d_distillation += self._compute_loss(LossStrategy.KLDIV_LOSS, F.log_softmax(real_validity, dim=1),
                     #                                             F.softmax(other_model_d_kl_pred, dim=1))
 
@@ -1231,10 +1231,10 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 fake_validity = d_model(fake_imgs)
                 for other_g_model_par in other_g_models_pars:
                     other_g_model.load_state_dict(other_g_model_par)
-                    other_fake_imgs = other_g_model(z)
-                    other_fake_validity = d_model(other_fake_imgs)
-                    loss_g_distillation += other_fake_validity
-                g_loss = -torch.mean(fake_validity + loss_g_distillation)
+                    other_fake_imgs = other_g_model(z).detach()
+                    # other_fake_validity = d_model(other_fake_imgs)
+                    loss_g_distillation += F.mse_loss(other_fake_imgs, fake_imgs)
+                g_loss = -torch.mean(fake_validity) + loss_g_distillation
                 g_optimizer.zero_grad()
                 g_loss.backward()
                 g_optimizer.step()
