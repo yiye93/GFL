@@ -1236,7 +1236,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 g_optimizer.step()
 
                 if idx % 100 == 0:
-                    self.logger.info("distillation_loss: {}".format(d_loss.item()))
+                    self.logger.info("distillation_g_loss: {}, distillation_d_loss: {}".format(g_loss.item(), d_loss.item()))
                 #     self.logger.info("distillation_loss: {}".format(loss.item()))
             step += 1
             # accuracy = acc / len(train_dataloader.dataset)
