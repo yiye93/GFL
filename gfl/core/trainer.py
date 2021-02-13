@@ -1204,11 +1204,6 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 # d_pred = F.log_softmax(d_kl_pred, dim=1)
                 # acc += torch.eq(kl_pred.argmax(dim=1), batch_target).sum().float().item()
                 loss_g_distillation, loss_d_distillation = 0, 0
-                for other_g_model_par in other_g_models_pars:
-                    other_g_model.load_state_dict(other_g_model_par)
-                    other_model_g_pred = other_g_model(z).detach()
-
-                    loss_g_distillation += F.mse_loss(fake_imgs, other_model_g_pred)
                     # loss_g_distillation += self._compute_loss(LossStrategy.KLDIV_LOSS, F.log_softmax(fake_imgs, dim=1),
                     #                                             F.softmax(other_model_g_kl_pred, dim=1))
 
@@ -1229,6 +1224,11 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
 
                 fake_imgs = g_model(z)
                 fake_validity = d_model(fake_imgs)
+                for other_g_model_par in other_g_models_pars:
+                    other_g_model.load_state_dict(other_g_model_par)
+                    other_model_g_pred = other_g_model(z).detach()
+
+                    loss_g_distillation += F.mse_loss(fake_imgs, other_model_g_pred)
                 g_loss_s = -torch.mean(fake_validity)
                 g_loss = g_loss_s + self.job.get_distillation_alpha() * loss_g_distillation
                 g_optimizer.zero_grad()
