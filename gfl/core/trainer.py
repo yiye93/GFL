@@ -988,7 +988,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         if not os.path.exists(generated_imgs_path):
             os.mkdir(generated_imgs_path)
 
-        z = torch.randn(64, 100)
+        z = torch.randn(32, 100)
         z = z.view(-1, 100, 1, 1)
         z = z.to(self.device)
         global_fake_imgs = new_g_model(z)
