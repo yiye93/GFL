@@ -1220,9 +1220,10 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     #                                             F.softmax(other_model_d_kl_pred, dim=1))
 
 
-                gradient_penalty = self._calc_gradient_penalty(d_model, batch_data, fake_imgs)
-                d_loss_s = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
-                d_loss = d_loss_s + loss_d_distillation
+                # gradient_penalty = self._calc_gradient_penalty(d_model, batch_data, fake_imgs)
+                # d_loss_s = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
+                # d_loss = d_loss_s + loss_d_distillation
+                d_loss = loss_d_distillation
                 d_optimizer.zero_grad()
                 d_loss.backward()
                 d_optimizer.step()
@@ -1234,7 +1235,8 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     other_fake_imgs = other_g_model(z).detach()
                     # other_fake_validity = d_model(other_fake_imgs)
                     loss_g_distillation += F.mse_loss(other_fake_imgs, fake_imgs)
-                g_loss = -torch.mean(fake_validity) + loss_g_distillation
+                # g_loss = -torch.mean(fake_validity) + loss_g_distillation
+                g_loss = loss_g_distillation
                 g_optimizer.zero_grad()
                 g_loss.backward()
                 g_optimizer.step()
