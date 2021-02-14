@@ -1405,7 +1405,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                             self._execute_gan_fed_avg(self.client_id, self.job.get_job_id(),
                                                   self.fed_step[self.job.get_job_id()] + 1, distillation_g_model_pars, distillation_d_model_pars)
                             self.logger.info("execute_gan_fed_avg success")
-                            self._save_global_generated_img(self.client_id, self.job.get_job_id(), self.fed_step[self.job.get_job_id()] + 1)
+                            self._save_global_generated_img(0, self.job.get_job_id(), self.fed_step[self.job.get_job_id()] + 1)
                             break
                         time.sleep(1)
 
