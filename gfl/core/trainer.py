@@ -1243,7 +1243,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                 # gradient_penalty = self._calc_gradient_penalty(d_model, batch_data, fake_imgs)
                 # d_loss_s = torch.mean(fake_validity) - torch.mean(real_validity) + gradient_penalty
                 # d_loss = self.job.get_distillation_alpha() * loss_d_distillation
-                d_loss = loss_d_distillation
+                d_loss = torch.log(loss_d_distillation)
                 # d_loss = loss_d_distillation
                 d_optimizer.zero_grad()
                 d_loss.backward()
@@ -1258,7 +1258,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     loss_g_distillation += F.mse_loss(other_fake_imgs, fake_imgs)
                 # g_loss_l = -torch.mean(fake_validity)
                 # g_loss = self.job.get_distillation_alpha() * loss_g_distillation
-                g_loss = loss_g_distillation
+                g_loss = torch.log(loss_g_distillation)
                 # g_loss = g_loss_l + g_loss_d
                 # g_loss = loss_g_distillation
                 g_optimizer.zero_grad()
