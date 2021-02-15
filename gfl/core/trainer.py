@@ -1256,7 +1256,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     # other_fake_validity = d_model(other_fake_imgs)
                     loss_g_distillation += F.mse_loss(other_fake_imgs, fake_imgs)
                 # g_loss_l = -torch.mean(fake_validity)
-                g_loss = - self.job.get_distillation_alpha() * torch.log(loss_g_distillation)
+                g_loss = self.job.get_distillation_alpha() * loss_g_distillation
                 # g_loss = g_loss_l + g_loss_d
                 # g_loss = loss_g_distillation
                 g_optimizer.zero_grad()
