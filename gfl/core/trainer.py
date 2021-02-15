@@ -1255,14 +1255,16 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     other_fake_imgs = other_g_model(z).detach()
                     # other_fake_validity = d_model(other_fake_imgs)
                     loss_g_distillation += F.mse_loss(other_fake_imgs, fake_imgs)
-                g_loss = -torch.mean(fake_validity) + self.job.get_distillation_alpha() * loss_g_distillation
+                g_loss_l = -torch.mean(fake_validity)
+                g_loss_d = self.job.get_distillation_alpha() * loss_g_distillation
+                g_loss = g_loss_l + g_loss_d
                 # g_loss = loss_g_distillation
                 g_optimizer.zero_grad()
                 g_loss.backward()
                 g_optimizer.step()
 
                 if idx % 100 == 0:
-                    self.logger.info("distillation_g_loss: {}, distillation_d_loss: {}".format(g_loss.item(), d_loss.item()))
+                    self.logger.info("g_loss_l: {}, g_loss_d: {}, distillation_g_loss: {}, distillation_d_loss: {}".format(g_loss_l.item(), g_loss_d.item(), g_loss.item(), d_loss.item()))
                 #     self.logger.info("distillation_loss: {}".format(loss.item()))
             step += 1
             # accuracy = acc / len(train_dataloader.dataset)
