@@ -660,6 +660,11 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
         g_model, d_model = g_model.to(device), d_model.to(device)
         g_model.train()
         d_model.train()
+        z = torch.randn(32, 100)
+        z = z.view(-1, 100, 1, 1)
+        z = z.to(device)
+        fake_imgs = g_model(z)
+        self._save_generated_img(self.client_id, self.job.get_job_id(), fed_step, fake_imgs)
         # if train_model.get_train_strategy().get_scheduler() is not None:
         #     scheduler = train_model.get_train_strategy().get_scheduler()
         while step < local_epoch:
@@ -698,7 +703,7 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
                     self.logger.info(
                         "train_D_loss: {}, train_G_loss: {}".format(d_loss, g_loss))
             step += 1
-        self._save_generated_img(self.client_id, self.job.get_job_id(), fed_step, fake_imgs)
+
         torch.save(g_model.state_dict(),
                    os.path.join(job_models_G_path, "tmp_G_parameters_{}".format(fed_step)))
         torch.save(d_model.state_dict(),
