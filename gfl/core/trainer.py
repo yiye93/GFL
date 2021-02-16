@@ -1146,10 +1146,10 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         torch.save(g_model.state_dict(),
                    os.path.join(job_models_G_path, "tmp_G_parameters_{}".format(fed_step)))
 
-        global_model_pars_dir = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(self.job.get_job_id()),
-                                             "g_global_models")
-        global_model_pars_path = os.path.join(global_model_pars_dir, "global_parameters_{}".format(fed_step))
-        torch.save(g_model.state_dict(), global_model_pars_path)
+        # global_model_pars_dir = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(self.job.get_job_id()),
+        #                                      "g_global_models")
+        # global_model_pars_path = os.path.join(global_model_pars_dir, "global_parameters_{}".format(fed_step))
+        # torch.save(g_model.state_dict(), global_model_pars_path)
         torch.save(d_model.state_dict(),
                    os.path.join(job_models_D_path, "tmp_D_parameters_{}".format(fed_step)))
 
@@ -1160,28 +1160,30 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         job_model_base_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id))
         other_g_models_pars, other_d_models_pars = [], []
         connected_clients_num = 0
-        # client_distillation_g_model_path = os.path.join(job_model_base_path, "models_{}".format(self.client_id),
-        #                                               "distillation_g_model_pars")
+        # local_g_model_dir = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id), "models_{}".format(self.client_id), "tmp_g_model_pars")
         client_distillation_d_model_path = os.path.join(job_model_base_path, "models_{}".format(self.client_id),
                                                         "distillation_d_model_pars")
-        if len(os.listdir(client_distillation_d_model_path)) >= fed_step:
-            return None, 0
+        client_distillation_g_model_path = os.path.join(job_model_base_path, "models_{}".format(self.client_id),
+                                                        "distillation_g_model_pars")
+        if len(os.listdir(client_distillation_g_model_path)) >= fed_step and len(os.listdir(client_distillation_d_model_path)) >= fed_step:
+            return None, None, 0
         for f in os.listdir(job_model_base_path):
             if f.find("models_") != -1 and int(f.split("_")[-1]) != int(self.client_id):
                 connected_clients_num += 1
                 d_files = os.listdir(os.path.join(job_model_base_path, f, "tmp_d_model_pars"))
-                if len(d_files) == 0 or len(d_files) < fed_step:
-                    return None, 0
+                g_files = os.listdir(os.path.join(job_model_base_path, f, "tmp_g_model_pars"))
+                if len(g_files) == 0 or len(d_files) == 0 or len(g_files) < fed_step or len(d_files) < fed_step:
+                    return None, None, 0
                 else:
-                    # other_g_models_pars.append(os.path.join(job_model_base_path, f, "tmp_g_model_pars", "tmp_G_parameters_{}".format(fed_step)))
+                    other_g_models_pars.append(os.path.join(job_model_base_path, f, "tmp_g_model_pars", "tmp_G_parameters_{}".format(fed_step)))
                     other_d_models_pars.append(os.path.join(job_model_base_path, f, "tmp_d_model_pars",
                                                             "tmp_D_parameters_{}".format(fed_step)))
         time.sleep(0.5)
-        # for i in range(len(other_g_models_pars)):
-        #     other_g_models_pars[i] = torch.load(other_g_models_pars[i])
+        for i in range(len(other_g_models_pars)):
+            other_g_models_pars[i] = torch.load(other_g_models_pars[i])
         for i in range(len(other_d_models_pars)):
             other_d_models_pars[i] = torch.load(other_d_models_pars[i])
-        return  other_d_models_pars, connected_clients_num + 1
+        return other_g_models_pars, other_d_models_pars, connected_clients_num + 1
 
 
     def _train_with_gan_distillation(self, train_g_model, train_d_model, other_d_models_pars, local_epoch, distillation_d_model_path, job_l2_dist):
@@ -1323,31 +1325,31 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         new_g_model.load_state_dict(g_model_pars)
         return new_g_model
 
-    def _gan_fed_avg_aggregate(self, disillation_d_model_pars_list, job_id, fed_step):
-        # avg_g_model_par = disillation_g_model_pars_list[0]
+    def _gan_fed_avg_aggregate(self, other_g_model_list, disillation_d_model_pars_list, job_id, fed_step):
+        avg_g_model_par = other_g_model_list[0]
         avg_d_model_par = disillation_d_model_pars_list[0]
-        # for key in avg_g_model_par.keys():
-        #     for i in range(1, len(disillation_g_model_pars_list)):
-        #         # avg_model_par[key] += weight_list[i]*disillation_model_pars_list[i][key]
-        #         avg_g_model_par[key] += disillation_g_model_pars_list[i][key]
-        #     avg_g_model_par[key] = torch.div(avg_g_model_par[key], len(disillation_g_model_pars_list))
+        for key in avg_g_model_par.keys():
+            for i in range(1, len(other_g_model_list)):
+                # avg_model_par[key] += weight_list[i]*disillation_model_pars_list[i][key]
+                avg_g_model_par[key] += other_g_model_list[i][key]
+            avg_g_model_par[key] = torch.div(avg_g_model_par[key], len(other_g_model_list))
         for key in avg_d_model_par.keys():
             for i in range(1, len(disillation_d_model_pars_list)):
                 # avg_model_par[key] += weight_list[i]*disillation_model_pars_list[i][key]
                 avg_d_model_par[key] += disillation_d_model_pars_list[i][key]
             avg_d_model_par[key] = torch.div(avg_d_model_par[key], len(disillation_d_model_pars_list))
         # self._test(avg_model_par)
-        # self._save_gan_global_model(job_id, fed_step, "G", avg_g_model_par)
+        self._save_gan_global_model(job_id, fed_step, "G", avg_g_model_par)
         self._save_gan_global_model(job_id, fed_step, "D", avg_d_model_par)
 
-    def _execute_gan_fed_avg(self, client_id, job_id, fed_step, distillation_d_model_pars_file_list):
+    def _execute_gan_fed_avg(self, client_id, job_id, fed_step, other_g_model_pars_file_list, distillation_d_model_pars_file_list):
         self.logger.info("client {} execute FedAvg".format(client_id))
         # last_global_model = self._load_global_model(job_id, fed_step - 1)
         # distillation_g_model_list, distillation_d_model_list = [], []
-        distillation_d_model_list = []
-        # for distillation_g_model_pars_file in distillation_g_model_pars_file_list:
-        #     distillation_g_model = self._load_gan_g_distillation_model(distillation_g_model_pars_file)
-        #     distillation_g_model_list.append(distillation_g_model)
+        distillation_d_model_list, other_g_model_list = [], []
+        for g_model_pars_file in other_g_model_list:
+            other_g_model = self._load_gan_g_distillation_model(g_model_pars_file)
+            other_g_model_list.append(other_g_model)
 
         for distillation_d_model_pars_file in distillation_d_model_pars_file_list:
             distillation_d_model = self._load_gan_d_distillation_model(distillation_d_model_pars_file)
@@ -1358,7 +1360,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         #                                 distillation_g_model_list]
         distillation_d_model_pars_list = [distillation_model.state_dict() for distillation_model in
                                           distillation_d_model_list]
-        self._gan_fed_avg_aggregate(distillation_d_model_pars_list, job_id, fed_step)
+        self._gan_fed_avg_aggregate(other_g_model_list, distillation_d_model_pars_list, job_id, fed_step)
 
 
     def train(self):
@@ -1383,13 +1385,13 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                     self.train_d_model.set_model(d_global_model)
                     self._train_gan(self.train_g_model, self.train_d_model, local_g_models_path, local_d_models_path, self.fed_step[self.job.get_job_id()] + 1,
                                 self.local_epoch)
-            other_d_model_pars, connected_clients_num = self._load_other_gan_models_pars(self.job.get_job_id(),
+            other_g_model_pars, other_d_model_pars, connected_clients_num = self._load_other_gan_models_pars(self.job.get_job_id(),
                                                                                    self.fed_step[self.job.get_job_id()]+1)
             # job_model = self._load_job_model(self.job.get_job_id(), self.job.get_train_model_class_name())
             # self.logger.info("job_{} is training, Aggregator strategy: {}, L2_dist: {}".format(self.job.get_job_id(),
             #                                                                                    self.job.get_aggregate_strategy(),
             #                                                                                    self.job.get_l2_dist()))
-            if other_d_model_pars is not None and connected_clients_num != 0:
+            if other_g_model_pars is not None and other_d_model_pars is not None and connected_clients_num != 0:
 
                 self.logger.info("model distillating....")
 
@@ -1408,7 +1410,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                         print("could fed_avg: {}".format(is_fed_avg))
                         if is_fed_avg:
                             self._execute_gan_fed_avg(self.client_id, self.job.get_job_id(),
-                                                  self.fed_step[self.job.get_job_id()] + 1, distillation_d_model_pars)
+                                                  self.fed_step[self.job.get_job_id()] + 1, other_g_model_pars, distillation_d_model_pars)
                             self.logger.info("execute_gan_fed_avg success")
                             self._save_global_generated_img(0, self.job.get_job_id(), self.fed_step[self.job.get_job_id()] + 1)
                             break
