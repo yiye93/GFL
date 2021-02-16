@@ -1347,7 +1347,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         # last_global_model = self._load_global_model(job_id, fed_step - 1)
         # distillation_g_model_list, distillation_d_model_list = [], []
         distillation_d_model_list, other_g_model_list = [], []
-        for g_model_pars_file in other_g_model_list:
+        for g_model_pars_file in other_g_model_pars_file_list:
             other_g_model = self._load_gan_g_distillation_model(g_model_pars_file)
             other_g_model_list.append(other_g_model)
 
