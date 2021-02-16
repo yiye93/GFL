@@ -1342,14 +1342,14 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         self._save_gan_global_model(job_id, fed_step, "G", avg_g_model_par)
         self._save_gan_global_model(job_id, fed_step, "D", avg_d_model_par)
 
-    def _execute_gan_fed_avg(self, client_id, job_id, fed_step, other_g_model_pars_file_list, distillation_d_model_pars_file_list):
+    def _execute_gan_fed_avg(self, client_id, job_id, fed_step, other_g_model_pars_list, distillation_d_model_pars_file_list):
         self.logger.info("client {} execute FedAvg".format(client_id))
         # last_global_model = self._load_global_model(job_id, fed_step - 1)
         # distillation_g_model_list, distillation_d_model_list = [], []
-        distillation_d_model_list, other_g_model_list = [], []
-        for g_model_pars_file in other_g_model_pars_file_list:
-            other_g_model = self._load_gan_g_distillation_model(g_model_pars_file)
-            other_g_model_list.append(other_g_model)
+        distillation_d_model_list = []
+        # for g_model_pars_file in other_g_model_pars_file_list:
+        #     other_g_model = self._load_gan_g_distillation_model(g_model_pars_file)
+        #     other_g_model_list.append(other_g_model)
 
         for distillation_d_model_pars_file in distillation_d_model_pars_file_list:
             distillation_d_model = self._load_gan_d_distillation_model(distillation_d_model_pars_file)
@@ -1360,7 +1360,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         #                                 distillation_g_model_list]
         distillation_d_model_pars_list = [distillation_model.state_dict() for distillation_model in
                                           distillation_d_model_list]
-        self._gan_fed_avg_aggregate(other_g_model_list, distillation_d_model_pars_list, job_id, fed_step)
+        self._gan_fed_avg_aggregate(other_g_model_pars_list, distillation_d_model_pars_list, job_id, fed_step)
 
 
     def train(self):
