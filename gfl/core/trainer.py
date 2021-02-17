@@ -24,12 +24,9 @@ import importlib
 import torch.nn.functional as F
 import torch.autograd as autograd
 from torchvision.utils import save_image
-from torch.autograd import Variable
 import matplotlib.pyplot as plt
-import tflib as lib
 import numpy as np
 from inspect import isfunction
-from gfl.entity import runtime_config
 from gfl.exceptions.fl_expection import GFLException
 from gfl.core.strategy import OptimizerStrategy, LossStrategy, SchedulerStrategy
 from gfl.utils.utils import LoggerFactory
@@ -653,19 +650,19 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * 10
         return gradient_penalty
 
-    def _get_inception_score(self, G, ):
-        all_samples = []
-        for i in range(10):
-            z = torch.randn(32, 100)
-            z = z.view(-1, 100, 1, 1)
-            z = z.to(self.device)
-            # samples_100 = autograd.Variable(samples_100, volatile=True)
-            all_samples.append(G(z).cpu().data.numpy())
-
-        all_samples = np.concatenate(all_samples, axis=0)
-        # all_samples = np.multiply(np.add(np.multiply(all_samples, 0.5), 0.5), 255).astype('int32')
-        all_samples = all_samples.reshape((-1, 1, 28, 28)).transpose(0, 2, 3, 1)
-        return lib.inception_score.get_inception_score(list(all_samples))[0]
+    # def _get_inception_score(self, G, ):
+    #     all_samples = []
+    #     for i in range(10):
+    #         z = torch.randn(32, 100)
+    #         z = z.view(-1, 100, 1, 1)
+    #         z = z.to(self.device)
+    #         # samples_100 = autograd.Variable(samples_100, volatile=True)
+    #         all_samples.append(G(z).cpu().data.numpy())
+    #
+    #     all_samples = np.concatenate(all_samples, axis=0)
+    #     # all_samples = np.multiply(np.add(np.multiply(all_samples, 0.5), 0.5), 255).astype('int32')
+    #     all_samples = all_samples.reshape((-1, 1, 28, 28)).transpose(0, 2, 3, 1)
+    #     return lib.inception_score.get_inception_score(list(all_samples))[0]
 
     def _train_gan(self, train_g_model, train_d_model, job_models_G_path, job_models_D_path, fed_step, local_epoch):
 
@@ -678,11 +675,11 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
         z = torch.randn(32, 100)
         z = z.view(-1, 100, 1, 1)
         z = z.to(device)
-        inception_score = self._get_inception_score(g_model)
+        # inception_score = self._get_inception_score(g_model)
         fake_imgs = g_model(z)
         self._save_generated_img(self.client_id, self.job.get_job_id(), fed_step, fake_imgs)
-        self.logger.info(
-            "inception_score: {}".format(inception_score))
+        # self.logger.info(
+        #     "inception_score: {}".format(inception_score))
         # if train_model.get_train_strategy().get_scheduler() is not None:
         #     scheduler = train_model.get_train_strategy().get_scheduler()
         while step < local_epoch:
@@ -997,19 +994,19 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
             optimizer = self._generate_new_scheduler(model, train_model.get_train_strategy().get_scheduler())
         return optimizer
 
-    def _get_inception_score(self, G, ):
-        all_samples = []
-        for i in range(10):
-            z = torch.randn(32, 100)
-            z = z.view(-1, 100, 1, 1)
-            z = z.to(self.device)
-            # samples_100 = autograd.Variable(samples_100, volatile=True)
-            all_samples.append(G(z).cpu().data.numpy())
-
-        all_samples = np.concatenate(all_samples, axis=0)
-        # all_samples = np.multiply(np.add(np.multiply(all_samples, 0.5), 0.5), 255).astype('int32')
-        all_samples = all_samples.reshape((-1, 1, 28, 28)).transpose(0, 2, 3, 1)
-        return lib.inception_score.get_inception_score(list(all_samples))[0]
+    # def _get_inception_score(self, G, ):
+    #     all_samples = []
+    #     for i in range(10):
+    #         z = torch.randn(32, 100)
+    #         z = z.view(-1, 100, 1, 1)
+    #         z = z.to(self.device)
+    #         # samples_100 = autograd.Variable(samples_100, volatile=True)
+    #         all_samples.append(G(z).cpu().data.numpy())
+    #
+    #     all_samples = np.concatenate(all_samples, axis=0)
+    #     # all_samples = np.multiply(np.add(np.multiply(all_samples, 0.5), 0.5), 255).astype('int32')
+    #     all_samples = all_samples.reshape((-1, 1, 28, 28)).transpose(0, 2, 3, 1)
+    #     return lib.inception_score.get_inception_score(list(all_samples))[0]
 
     def _save_global_generated_img(self, client_id, job_id, fed_step):
         g_global_model_pars_dir = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
@@ -1025,14 +1022,14 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         if not os.path.exists(generated_imgs_path):
             os.mkdir(generated_imgs_path)
 
-        inception_score = self._get_inception_score(new_g_model)
+        # inception_score = self._get_inception_score(new_g_model)
 
         z = torch.randn(32, 100)
         z = z.view(-1, 100, 1, 1)
         z = z.to(self.device)
         global_fake_imgs = new_g_model(z)
         save_image(global_fake_imgs, os.path.join(generated_imgs_path, "img_{}.jpg".format(fed_step)))
-        self.logger.info("inception score: {}".format(inception_score))
+        # self.logger.info("inception score: {}".format(inception_score))
 
     def _save_generated_img(self, client_id, job_id, fed_step, fake_imgs):
         generated_imgs_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),

@@ -5,6 +5,7 @@ from gfl.core.client import FLClient
 from gfl.core.strategy import WorkModeStrategy, TrainStrategy, LossStrategy
 from gfl.core.trainer_controller import TrainerController
 import sys
+
 sys.path.append(os.path.join(os.path.abspath("../gan_mnist_fedavg_demo"), "utils"))
 CLIENT_ID = 0
 
