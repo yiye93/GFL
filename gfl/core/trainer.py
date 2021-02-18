@@ -29,6 +29,7 @@ import torchvision
 import matplotlib.pyplot as plt
 import numpy as np
 from inspect import isfunction
+from gfl.core.model import ResNet18
 from gfl.exceptions.fl_expection import GFLException
 from gfl.core.strategy import OptimizerStrategy, LossStrategy, SchedulerStrategy
 from gfl.utils.utils import LoggerFactory
@@ -652,82 +653,53 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
         gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * 10
         return gradient_penalty
 
-    # def calculate_activation_statistics(self, images, model, batch_size=128, dims=2048,
-    #                                     cuda=False):
-    #     model.eval()
-    #     act = np.empty((len(images), dims))
-    #
-    #     if cuda:
-    #         batch = images.cuda()
-    #     else:
-    #         batch = images
-    #     pred = model(batch)[0]
-    #
-    #     # If model output is not scalar, apply global spatial average pooling.
-    #     # This happens if you choose a dimensionality not equal 2048.
-    #     # if pred.size(2) != 1 or pred.size(3) != 1:
-    #     #     pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
-    #
-    #     act = pred.cpu().data.numpy().reshape(pred.size(0), -1)
-    #
-    #     mu = np.mean(act, axis=0)
-    #     sigma = np.cov(act, rowvar=False)
-    #     return mu, sigma
-    #
-    # def calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
-    #
-    #     mu1 = np.atleast_1d(mu1)
-    #     mu2 = np.atleast_1d(mu2)
-    #
-    #     sigma1 = np.atleast_2d(sigma1)
-    #     sigma2 = np.atleast_2d(sigma2)
-    #
-    #     assert mu1.shape == mu2.shape, \
-    #         'Training and test mean vectors have different lengths'
-    #     assert sigma1.shape == sigma2.shape, \
-    #         'Training and test covariances have different dimensions'
-    #
-    #     diff = mu1 - mu2
-    #
-    #     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
-    #     if not np.isfinite(covmean).all():
-    #         msg = ('fid calculation produces singular product; '
-    #                'adding %s to diagonal of cov estimates') % eps
-    #         print(msg)
-    #         offset = np.eye(sigma1.shape[0]) * eps
-    #         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
-    #
-    #     if np.iscomplexobj(covmean):
-    #         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
-    #             m = np.max(np.abs(covmean.imag))
-    #             raise ValueError('Imaginary component {}'.format(m))
-    #         covmean = covmean.real
-    #     tr_covmean = np.trace(covmean)
-    #
-    #     return (diff.dot(diff) + np.trace(sigma1) +
-    #             np.trace(sigma2) - 2 * tr_covmean)
-    #
-    # def calculate_fretchet(self, images_real, images_fake, model):
-    #     mu_1, std_1 = self.calculate_activation_statistics(images_real, model, cuda=True)
-    #     mu_2, std_2 = self.calculate_activation_statistics(images_fake, model, cuda=True)
-    #
-    #     """get fretched distance"""
-    #     fid_value =self.calculate_frechet_distance(mu_1, std_1, mu_2, std_2)
-    #     return fid_value
-    #
-    # def _get_fid(self, fake_imgs):
-    #
-    #     train_dataloader = torch.utils.data.DataLoader(self.data,
-    #                                                    batch_size=self.g_model.get_train_strategy().get_batch_size(),
-    #                                                    shuffle=True,
-    #                                                    num_workers=0,
-    #                                                    pin_memory=True)
-    #     for idx, (batch_data, batch_target) in enumerate(train_dataloader):
-    #         batch_imgs, batch_target = batch_data.to(self.device), batch_target.to(self.device)
-    #     inception_v3_model = torch.load("/home/hyf/inception_v3_model/inception_v3_google.pth")
-    #     inception_v3_model = inception_v3_model.to(self.device)
-    #     fid = self.calculate_fretchet(fake_imgs, batch_imgs, inception_v3_model)
-    #     return fid
+    def _preds2score(self, preds, splits=10):
+        scores = []
+        for i in range(splits):
+            part = preds[(i * preds.shape[0] // splits):((i + 1) * preds.shape[0] // splits), :]
+            kl = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
+            kl = np.mean(np.sum(kl, 1))
+            scores.append(np.exp(kl))
+        return np.mean(scores), np.std(scores)
+
+    def _get_inception_score(self, fake_imgs):
+        splits = 1
+        inps = []
+        # input_transform = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        # for img in images:
+        #     img = img.astype(np.float32)
+        #     inps.append(np.expand_dims(img, 0))
+        inps.append(fake_imgs)
+        preds = []
+        # n_batches = int(math.ceil(float(len(inps)) / float(args.batch_size)))
+        n_preds = 0
+
+        net = ResNet18()
+        net = net.to(self.device)
+        net_parameter = torch.load("/home/hyf/mnist_model_10.ckpt")
+        net.load_state_dict(net_parameter)
+        print("load model successfully")
+        # train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0,
+        #                                                pin_memory=True)
+        # for i, (batch_imgs, batch_label) in enumerate(train_dataloader):
+        # sys.stdout.write(".")
+        # sys.stdout.flush()
+        # inp = inps[(i * args.batch_size):min((i + 1) * args.batch_size, len(inps))]
+        # inp = inps[(i * batch_imgs.shape[0]):min((i + 1) * batch_imgs.shape[0], len(inps))]
+        inp = inps[0]
+        # inp = np.concatenate(inp, 0)
+        # inp = np.expand_dims(inp, axis=1)
+        # # inp = torch.from_numpy(inp).cuda()
+        # inp = torch.from_numpy(inp)
+        outputs = net(inp)
+        pred = outputs.data.tolist()
+        # pred = softmax(pred)
+        preds.append(pred)
+        # n_preds += outputs.shape[0]
+        preds = np.concatenate(preds, 0)
+        preds = np.exp(preds) / np.sum(np.exp(preds), 1, keepdims=True)
+        mean_, std_ = self._preds2score(preds, splits)
+        return mean_, std_
 
     def _train_gan(self, train_g_model, train_d_model, job_models_G_path, job_models_D_path, fed_step, local_epoch):
 
@@ -740,12 +712,11 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
         z = torch.randn(32, 100)
         z = z.view(-1, 100, 1, 1)
         z = z.to(device)
-        # inception_score = self._get_inception_score(g_model)
         fake_imgs = g_model(z)
-        # fid = self._get_fid(fake_imgs)
+        inception_score, _ = self._get_inception_score(fake_imgs)
         self._save_generated_img(self.client_id, self.job.get_job_id(), fed_step, fake_imgs)
-        # self.logger.info(
-        #     "GAN FID: {}".format(fid))
+        self.logger.info(
+            "GAN Inception Score: {}".format(inception_score))
         # if train_model.get_train_strategy().get_scheduler() is not None:
         #     scheduler = train_model.get_train_strategy().get_scheduler()
         while step < local_epoch:
@@ -1061,83 +1032,53 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
             optimizer = self._generate_new_scheduler(model, train_model.get_train_strategy().get_scheduler())
         return optimizer
 
-    # def calculate_activation_statistics(self, images, model, batch_size=128, dims=2048,
-    #                                     cuda=False):
-    #     model.eval()
-    #     act = np.empty((len(images), dims))
-    #
-    #     if cuda:
-    #         batch = images.cuda()
-    #     else:
-    #         batch = images
-    #     pred = model(batch)[0]
-    #
-    #     # If model output is not scalar, apply global spatial average pooling.
-    #     # This happens if you choose a dimensionality not equal 2048.
-    #     # if pred.size(2) != 1 or pred.size(3) != 1:
-    #     #     pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
-    #
-    #     act = pred.cpu().data.numpy().reshape(pred.size(0), -1)
-    #
-    #     mu = np.mean(act, axis=0)
-    #     sigma = np.cov(act, rowvar=False)
-    #     return mu, sigma
-    #
-    # def calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
-    #
-    #     mu1 = np.atleast_1d(mu1)
-    #     mu2 = np.atleast_1d(mu2)
-    #
-    #     sigma1 = np.atleast_2d(sigma1)
-    #     sigma2 = np.atleast_2d(sigma2)
-    #
-    #     assert mu1.shape == mu2.shape, \
-    #         'Training and test mean vectors have different lengths'
-    #     assert sigma1.shape == sigma2.shape, \
-    #         'Training and test covariances have different dimensions'
-    #
-    #     diff = mu1 - mu2
-    #
-    #     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
-    #     if not np.isfinite(covmean).all():
-    #         msg = ('fid calculation produces singular product; '
-    #                'adding %s to diagonal of cov estimates') % eps
-    #         print(msg)
-    #         offset = np.eye(sigma1.shape[0]) * eps
-    #         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
-    #
-    #     if np.iscomplexobj(covmean):
-    #         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
-    #             m = np.max(np.abs(covmean.imag))
-    #             raise ValueError('Imaginary component {}'.format(m))
-    #         covmean = covmean.real
-    #     tr_covmean = np.trace(covmean)
-    #
-    #     return (diff.dot(diff) + np.trace(sigma1) +
-    #             np.trace(sigma2) - 2 * tr_covmean)
-    #
-    # def calculate_fretchet(self, images_real, images_fake, model):
-    #     mu_1, std_1 = self.calculate_activation_statistics(images_real, model, cuda=True)
-    #     mu_2, std_2 = self.calculate_activation_statistics(images_fake, model, cuda=True)
-    #
-    #     """get fretched distance"""
-    #     fid_value = self.calculate_frechet_distance(mu_1, std_1, mu_2, std_2)
-    #     return fid_value
+    def _preds2score(self, preds, splits=10):
+        scores = []
+        for i in range(splits):
+            part = preds[(i * preds.shape[0] // splits):((i + 1) * preds.shape[0] // splits), :]
+            kl = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
+            kl = np.mean(np.sum(kl, 1))
+            scores.append(np.exp(kl))
+        return np.mean(scores), np.std(scores)
 
-    # def _get_fid(self, fake_imgs):
-    #
-    #     train_dataloader = torch.utils.data.DataLoader(self.data,
-    #                                                    batch_size=self.g_model.get_train_strategy().get_batch_size(),
-    #                                                    shuffle=True,
-    #                                                    num_workers=0,
-    #                                                    pin_memory=True)
-    #     for idx, (batch_data, batch_target) in enumerate(train_dataloader):
-    #         batch_imgs, batch_target = batch_data.to(self.device), batch_target.to(self.device)
-    #     torchvision.models.inception_v3()
-    #     inception_v3_model = torch.load("/home/hyf/inception_v3_model/inception_v3_google.pth")
-    #     inception_v3_model = inception_v3_model.to(self.device)
-    #     fid = self.calculate_fretchet(fake_imgs, batch_imgs, inception_v3_model)
-    #     return fid
+    def _get_inception_score(self, fake_imgs):
+        splits = 1
+        inps = []
+        # input_transform = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        # for img in images:
+        #     img = img.astype(np.float32)
+        #     inps.append(np.expand_dims(img, 0))
+        inps.append(fake_imgs)
+        preds = []
+        # n_batches = int(math.ceil(float(len(inps)) / float(args.batch_size)))
+        n_preds = 0
+
+        net = ResNet18()
+        net = net.to(self.device)
+        net_parameter = torch.load("/home/hyf/mnist_model_10.ckpt")
+        net.load_state_dict(net_parameter)
+        print("load model successfully")
+        # train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0,
+        #                                                pin_memory=True)
+        # for i, (batch_imgs, batch_label) in enumerate(train_dataloader):
+        # sys.stdout.write(".")
+        # sys.stdout.flush()
+        # inp = inps[(i * args.batch_size):min((i + 1) * args.batch_size, len(inps))]
+        # inp = inps[(i * batch_imgs.shape[0]):min((i + 1) * batch_imgs.shape[0], len(inps))]
+        inp = inps[0]
+        # inp = np.concatenate(inp, 0)
+        # inp = np.expand_dims(inp, axis=1)
+        # # inp = torch.from_numpy(inp).cuda()
+        # inp = torch.from_numpy(inp)
+        outputs = net(inp)
+        pred = outputs.data.tolist()
+        # pred = softmax(pred)
+        preds.append(pred)
+        # n_preds += outputs.shape[0]
+        preds = np.concatenate(preds, 0)
+        preds = np.exp(preds) / np.sum(np.exp(preds), 1, keepdims=True)
+        mean_, std_ = self._preds2score(preds, splits)
+        return mean_, std_
 
     def _save_global_generated_img(self, client_id, job_id, fed_step):
         g_global_model_pars_dir = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
@@ -1153,15 +1094,16 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
         if not os.path.exists(generated_imgs_path):
             os.mkdir(generated_imgs_path)
 
-        # inception_score = self._get_inception_score(new_g_model)
+
 
         z = torch.randn(32, 100)
         z = z.view(-1, 100, 1, 1)
         z = z.to(self.device)
         global_fake_imgs = new_g_model(z)
         # fid = self._get_fid(global_fake_imgs)
+        inception_score, _ = self._get_inception_score(global_fake_imgs)
         save_image(global_fake_imgs, os.path.join(generated_imgs_path, "img_{}.jpg".format(fed_step)))
-        # self.logger.info("GAN FID: {}".format(fid))
+        self.logger.info("GAN Inception Score: {}".format(inception_score))
 
     def _save_generated_img(self, client_id, job_id, fed_step, fake_imgs):
         generated_imgs_path = os.path.join(LOCAL_MODEL_BASE_PATH, "models_{}".format(job_id),
