@@ -723,7 +723,7 @@ class TrainStandloneGANFedAvgStrategy(TrainStandloneNormalStrategy):
                                                        pin_memory=True)
         for idx, (batch_data, batch_target) in enumerate(train_dataloader):
             batch_imgs, batch_target = batch_data.to(self.device), batch_target.to(self.device)
-        inception_v3_model = torch.load("~/inception_v3_model/inception_v3_google.pth")
+        inception_v3_model = torch.load("/home/hyf/inception_v3_model/inception_v3_google.pth")
         inception_v3_model = inception_v3_model.to(self.device)
         fid = self.calculate_fretchet(fake_imgs, batch_imgs, inception_v3_model)
         return fid
@@ -1132,7 +1132,7 @@ class TrainStandloneGANDistillationStrategy(TrainStandloneDistillationStrategy):
                                                        pin_memory=True)
         for idx, (batch_data, batch_target) in enumerate(train_dataloader):
             batch_imgs, batch_target = batch_data.to(self.device), batch_target.to(self.device)
-        inception_v3_model = torch.load("~/inception_v3_model/inception_v3_google.pth")
+        inception_v3_model = torch.load("/home/hyf/inception_v3_model/inception_v3_google.pth")
         inception_v3_model = inception_v3_model.to(self.device)
         fid = self.calculate_fretchet(fake_imgs, batch_imgs, inception_v3_model)
         return fid
